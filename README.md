@@ -312,7 +312,7 @@ async def get_user_profile_by_id(
 - FastAPI는 논블로킹 I/O 작업만 수행하도록 사용자를 신회한다.
 - 비동기 경로 내에서 블로킹 작업을 실행하는 경우, 해당 차단 작업이 완료될 때까지, 이벤트 루프가 다음 작업을 실행할 수 없음에 주의한다.
 
-```pycon
+```python
 import asyncio
 import time
 
