@@ -75,7 +75,7 @@ FastAPI-Playground
 
 **패키지에서 다른 패키지의 서비스나 종속성 또는 상수가 필요한 경우, 명시적인 모듈 명으로 가져온다.**
 
-```pycon
+```python
 from src.auth import constants as auth_constants
 from src.notifications import service as notification_service
 from src.posts.constants import ErrorCode as PostsErrorCode  # in case we have Standard ErrorCode in constants module of each package
