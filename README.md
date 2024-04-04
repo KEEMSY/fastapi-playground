@@ -588,6 +588,413 @@ async def send_user_email(worker: BackgroundTasks, user_id: UUID4):
     return {"status": "ok"}
 ```
 
+## 16. Typing을 활용하여, 코드를 명확하게 작성한다.
+
+`FastAPI`에서는 `Pydantic`을 지원하고, 대부분의 IDE에서는 타입 힌트 사용을 장려 한다.
+
+- `Union`, `Optional`, `List`, `Dict`, `Class` 등을 사용하여 코드를 명확하게 작성한다.
+
+## 17. 파일은 여러개의 chunk로 저장한다.
+
+사용자가 작은 파일들을 보낼거라고 기대하지 말자.
+
+- 클라이언트가 서버에 파일, 특히 대용량 파일을 업로드할 때 전체 파일을 메모리에 로드하려고 시도하면 서버 리소스에 부담을 주고, 업로드가 실패하거나 비효율성을 초래한다.
+- 파일을 여러 청크로 나누어 저장하면, 서버 리소스를 효율적으로 사용할 수 있으며, 서버의 응답성을 유지할 수 있다.
+
+
+```python
+import aiofiles
+from fastapi import UploadFile
+
+DEFAULT_CHUNK_SIZE = 1024 * 1024 * 50  # 50 megabytes
+
+async def save_video(video_file: UploadFile):
+   async with aiofiles.open("/file/path/name.mp4", "wb") as f:
+     while chunk := await video_file.read(DEFAULT_CHUNK_SIZE):
+         await f.write(chunk)
+```
+
+## 18. 동적 Pydantic 모델을 사용할 때에는 주의한다.
+
+여러 유형을 허용할 수 있는 필드로 모델을 정의할 때(Python의 `Union` 또는 `|` 표기법 사용), `Pydantic`은 입력 데이터를 올바른 유형과 일치시키려고 시도한다. 
+
+- 첫 번째 유형부터 시작하여 데이터를 맞추려고 시도하며, 오류를 발생시키지 않고 데이터를 첫 번째 유형으로 강제 변환할 수 있는 경우 `Pydantic`은 해당 유형을 선택하며 때로는 의도하지 않은 결과를 초래할 수 있다.
+
+```python
+from pydantic import BaseModel
+
+
+class Article(BaseModel):
+   text: str | None
+   extra: str | None
+
+
+class Video(BaseModel):
+   video_id: int
+   text: str | None
+   extra: str | None
+
+   
+class Post(BaseModel):
+   content: Article | Video
+
+   
+post = Post(content={"video_id": 1, "text": "text"})
+print(type(post.content))
+# OUTPUT: Article
+# Article is very inclusive and all fields are optional, allowing any dict to become valid
+```
+
+### 해결책
+
+1. 모델을 작성할 때, `Extra.forbid` 사용한다.
+
+`Extra.forbid` 은 모델에 명시적으로 정의되지 않은 추가 필드를 금지하도록 모델을 구성한다.
+
+- 알려진 필드만 허용되므로 입력 데이터를 기반으로 모델 유형을 잘못 식별하는 위험이 줄어든다.
+
+```python
+from pydantic import BaseModel, Extra
+
+class Article(BaseModel):
+   text: str | None
+   extra: str | None
+   
+   class Config:
+        extra = Extra.forbid
+       
+
+class Video(BaseModel):
+   video_id: int
+   text: str | None
+   extra: str | None
+   
+   class Config:
+        extra = Extra.forbid
+
+   
+class Post(BaseModel):
+   content: Article | Video
+```
+
+2. 스마트 유니온을 사용한다.(Pydantic 버전 1.9 이상 및 2.0 미만에서 사용 가능)
+
+`smart_union`은 입력 데이터를 기반으로 유니온에서 사용해야 하는 유형을 보다 지능적으로 결정한다. 
+
+- 간단한 클래스 유형(예: `int` 또는 `bool`)을 사용하는 경우에만 동작한다.(클래스를 지정할 경우 동작하지 않는다.)
+
+```python
+##############################
+# without smart_union
+##############################
+from pydantic import BaseModel
+
+
+class Post(BaseModel):
+   field_1: bool | int
+   field_2: int | str
+   content: Article | Video
+
+p = Post(field_1=1, field_2="1", content={"video_id": 1})
+print(p.field_1)
+# OUTPUT: True
+print(type(p.field_2))
+# OUTPUT: int
+print(type(p.content))
+# OUTPUT: Article
+
+##############################
+# with smart_union
+##############################
+class Post(BaseModel):
+   field_1: bool | int
+   field_2: int | str
+   content: Article | Video
+
+   class Config:
+      smart_union = True
+
+
+p = Post(field_1=1, field_2="1", content={"video_id": 1})
+print(p.field_1)
+# OUTPUT: 1
+print(type(p.field_2))
+# OUTPUT: str
+print(type(p.content))
+# OUTPUT: Article, because smart_union doesn't work for complex fields like classes
+```
+
+3. 필드 유형 순서를 지정한다.
+
+가장 실용적인 해결방법으로, Union의 유형을 가장 구체적인(또는 엄격한) 것부터 가장 적은 것 순으로 정렬한다.
+
+- `Pydantic`은 가장 구체적인 유형을 먼저 일치시키려고 시도하며 이는 복잡한 필드의 유형을 올바르게 식별하는 데 도움이 된다.
+
+```python
+class Post(BaseModel):
+   content: Video | Article
+```
+
+## 19. SQL을 우선적으로 하고, 다음 Pydantic을 사용한다.
+
+일반적으로 DB는 CPython이 수행하는 것보다 훨씬 빠르고 깔끔하게 데이터를 처리한다.
+
+- 복잡한 `JOIN`과 간단한 데이터 조작은 모두 `SQL`로 수행하는 것이 좋다.
+- `SQL`을 사용하여 데이터를 가져와 구조화 한 뒤, `Pydantic`을 사용하여 데이터를 변환한다.
+- 이를 통해 데이터는 더 빠르게 처리되고, FE에 일관된 인터페이스를 제공할 수 있다.
+
+```python
+# src.posts.service
+from typing import Mapping
+
+from pydantic import UUID4
+from sqlalchemy import desc, func, select, text
+from sqlalchemy.sql.functions import coalesce
+
+from src.database import database, posts, profiles, post_review, products
+
+async def get_posts(
+    creator_id: UUID4, *, limit: int = 10, offset: int = 0
+) -> list[Mapping]: 
+    select_query = (
+        select(
+            (
+                posts.c.id,
+                posts.c.type,
+                posts.c.slug,
+                posts.c.title,
+                func.json_build_object(
+                   text("'id', profiles.id"),
+                   text("'first_name', profiles.first_name"),
+                   text("'last_name', profiles.last_name"),
+                   text("'username', profiles.username"),
+                ).label("creator"),
+            )
+        )
+        .select_from(posts.join(profiles, posts.c.owner_id == profiles.c.id))
+        .where(posts.c.owner_id == creator_id)
+        .limit(limit)
+        .offset(offset)
+        .group_by(
+            posts.c.id,
+            posts.c.type,
+            posts.c.slug,
+            posts.c.title,
+            profiles.c.id,
+            profiles.c.first_name,
+            profiles.c.last_name,
+            profiles.c.username,
+            profiles.c.avatar,
+        )
+        .order_by(
+            desc(coalesce(posts.c.updated_at, posts.c.published_at, posts.c.created_at))
+        )
+    )
+    
+    return await database.fetch_all(select_query)
+
+# src.posts.schemas
+import orjson
+from enum import Enum
+
+from pydantic import BaseModel, UUID4, validator
+
+
+class PostType(str, Enum):
+    ARTICLE = "ARTICLE"
+    COURSE = "COURSE"
+
+   
+class Creator(BaseModel):
+    id: UUID4
+    first_name: str
+    last_name: str
+    username: str
+
+
+class Post(BaseModel):
+    id: UUID4
+    type: PostType
+    slug: str
+    title: str
+    creator: Creator
+
+    @validator("creator", pre=True)  # before default validation
+    def parse_json(cls, creator: str | dict | Creator) -> dict | Creator:
+       if isinstance(creator, str):  # i.e. json
+          return orjson.loads(creator)
+
+       return creator
+    
+# src.posts.router
+from fastapi import APIRouter, Depends
+
+router = APIRouter()
+
+
+@router.get("/creators/{creator_id}/posts", response_model=list[Post])
+async def get_creator_posts(creator: Mapping = Depends(valid_creator_id)):
+   posts = await service.get_posts(creator["id"])
+
+   return posts
+```
+
+집계된 데이터 양식이 간단한 `JSON`인 경우, `Pydantic`의 `Json`을 사용하는 것을 고려할 수 있다.
+
+- `Pydantic`의 `Json 필드`는 `raw JSON` 보다 먼저 로딩된다.
+
+```python
+from pydantic import BaseModel, Json
+
+class A(BaseModel):
+    numbers: Json[list[int]]
+    dicts: Json[dict[str, int]]
+
+valid_a = A(numbers="[1, 2, 3]", dicts='{"key": 1000}')  # becomes A(numbers=[1,2,3], dicts={"key": 1000})
+invalid_a = A(numbers='["a", "b", "c"]', dicts='{"key": "str instead of int"}')  # raises ValueError
+```
+
+## 20. URLs에 대한 hosts를 검증한다.
+
+`Pydantic`을 활용하여 신뢰할 수 있는 소스의 `URL`만 허용 되도록 한다.
+
+- 화이트 리스트(허용된 호스트 집합(예: "mysite.com", "mysite.org"))를 정의한다.
+- 사용자 정의 `AnyUrl` 클래스를 생성하고, `validate_host` 메서드를 재정의하여 추가 유효성 검사 논리를 도입한다.
+- 사용자 정의 `URL` 유형은 `Pydantic` 모델(예: `Profile`)에서 `URL`을 허용하는 필드를 검증하는 데 사용되어 허용 목록에 있는 호스트의 `URL`만 허용되도록 한다.
+
+```python
+from pydantic import AnyUrl, BaseModel
+
+ALLOWED_MEDIA_URLS = {"mysite.com", "mysite.org"}
+
+class CompanyMediaUrl(AnyUrl):
+    @classmethod
+    def validate_host(cls, parts: dict) -> tuple[str, str, str, bool]:  # pydantic v1
+       """Extend pydantic's AnyUrl validation to whitelist URL hosts."""
+        host, tld, host_type, rebuild = super().validate_host(parts)
+        if host not in ALLOWED_MEDIA_URLS:
+            raise ValueError(
+                "Forbidden host url. Upload files only to internal services."
+            )
+
+        return host, tld, host_type, rebuild
+
+
+class Profile(BaseModel):
+    avatar_url: CompanyMediaUrl  # only whitelisted urls for avatar
+```
+
+이 방식을 통해 보안, 유연성, 단순성 측면에서 장점이 있다.
+
+- 승인되지 않은 호스트의 사용을 방지하여, 보안을 강화할 수 있다.
+- 유효성 검사 논리를 변경하지 않고도 화이트리스트를 쉽게 업데이트 할 수 있다.
+
+## 21. 커스텀 Pydantic validator에서 ValueError를 사용한다.
+
+```python
+# src.profiles.schemas
+from pydantic import BaseModel, validator
+
+class ProfileCreate(BaseModel):
+    username: str
+    
+    @validator("username")  # pydantic v1
+    def validate_bad_words(cls, username: str):
+        if username  == "me":
+            raise ValueError("bad username, choose another")
+        
+        return username
+
+
+# src.profiles.routes
+from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.post("/profiles")
+async def get_creator_posts(profile_data: ProfileCreate):
+   pass
+```
+
+## 22. FastAPI는 Pydantic 객체를 Dict > Pydantic object > JSON 으로 변환한다.
+
+`FastAPI`는 먼저 해당 `pydantic 개체`를 `jsonable_encoder`를 사용하여 `dict`로 변환한 다음 `response_model`을 사용하여 데이터의 유효성을 검사, 그리고 개체를 `JSON`으로 직렬화한다.
+
+- `response_model`과 일치하는 `Pydantic` 객체를 반환 할 수 없음에 주의한다.
+
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel, root_validator
+
+app = FastAPI()
+
+
+class ProfileResponse(BaseModel):
+    @root_validator
+    def debug_usage(cls, data: dict):
+        print("created pydantic model")
+
+        return data
+
+    def dict(self, *args, **kwargs):
+        print("called dict")
+        return super().dict(*args, **kwargs)
+
+
+@app.get("/", response_model=ProfileResponse)
+async def root():
+    return ProfileResponse()
+
+'''
+Logs Output:
+[INFO] [2022-08-28 12:00:00.000000] created pydantic model
+[INFO] [2022-08-28 12:00:00.000010] called dict
+[INFO] [2022-08-28 12:00:00.000020] created pydantic model
+[INFO] [2022-08-28 12:00:00.000030] called dict
+'''
+```
+
+## 23. sync SDK을 사용해야한다면, thread pool을 사용한다.
+
+동기 라이브러리 또는 `SDK`가 비동기 애플리케이션 내에서 사용되는 경우 이벤트 루프를 보류하여 `FastAPI`의 이점을 무효화 할 수 있다.
+
+- 외부 서비스와 상호작용하기 위해 라이브러리를 사용해야하고, 비동기적이지 않은 경우, 외부 worker thread에서 HTTP 요청을 수행하는 것이 좋다.
+- `run_in_threadpool` 함수를 사용하여 외부 서비스와 상호작용하는 동기 코드를 비동기 코드로 변환한다.
+  - `run_in_threadpool`: 스레드 풀에서 동기 함수 실행을 예약하는 `Starlette`(FastAPI가 구축된 경량 ASGI 프레임워크)의 유틸리티 함수, 이 스레드 풀은 비동기 이벤트 루프에 의해 관리되므로 비동기 작업을 차단하지 않고 동기 함수를 실행할 수 있다.
+- `SyncAPIClient`: 외부 서비스와 상호 작용하는 데 사용되는 가상의 동기 클라이언트 라이브러리로, 일반적으로 비동기 애플리케이션에서 이벤트 루프를 차단한다.
+
+```python
+from fastapi import FastAPI
+from fastapi.concurrency import run_in_threadpool
+from my_sync_library import SyncAPIClient 
+
+app = FastAPI()
+
+
+@app.get("/")
+async def call_my_sync_library():
+    my_data = await service.get_my_data()
+
+    client = SyncAPIClient()
+    await run_in_threadpool(client.make_request, data=my_data)
+```
+
+## 24. Linters를 사용한다.
+
+`Linter`를 사용하면 코드 형식을 통일하고, 잠재적인 버그를 찾아내고, 코드의 가독성을 높일 수 있다.
+
+- `Black`, `Ruff`를 사용하는 것을 추천한다.
+- `pre-commit hooks`를 사용하는 방법도 좋은 방법이지만, `script`를 사용하는 것만으로도 충분하다.
+
+```shell
+#!/bin/sh -e
+set -x
+
+ruff --fix
+black src tests
+```
+
 ---
 ### 참고 자료
 - [fastapi-best-practices](https://github.com/zhanymkanov/fastapi-best-practices?tab=readme-ov-file#11-sqlalchemy-set-db-keys-naming-convention)
