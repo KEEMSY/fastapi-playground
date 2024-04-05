@@ -4,7 +4,7 @@
 
 ```text
 FastAPI-Playground
-├── alembic/(not yet)
+├── alembic/
 ├── src
 │   ├── auth(not yet)
 │   │   ├── router.py

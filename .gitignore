@@ -3,3 +3,5 @@ venv
 .Python
 .idea/
 pyvenv.cfg
+.pytest_cache
+.ruff_cache
