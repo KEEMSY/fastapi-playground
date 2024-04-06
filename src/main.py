@@ -20,6 +20,7 @@ app.add_middleware(
 
 app.include_router(question_router.router)
 
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
