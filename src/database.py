@@ -18,10 +18,8 @@ create_engine, sessionmaker 등을 사용하는것은 SQLAlchemy 데이터베이
   commit이 필요없는 것처럼 rollback도 동작하지 않는다.
 """
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./fastapi-playground.db"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:test@localhost:13306/fastapi_playground"
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
