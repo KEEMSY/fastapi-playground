@@ -18,7 +18,9 @@ create_engine, sessionmaker 등을 사용하는것은 SQLAlchemy 데이터베이
   commit이 필요없는 것처럼 rollback도 동작하지 않는다.
 """
 
-SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:test@localhost:13306/fastapi_playground"
+SQLALCHEMY_DATABASE_URL = (
+    "mysql+mysqlconnector://root:test@localhost:13306/fastapi_playground"
+)
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -31,6 +33,7 @@ MYSQL_INDEXES_NAMING_CONVENTION = {
 }
 metadata = MetaData(naming_convention=MYSQL_INDEXES_NAMING_CONVENTION)
 Base = declarative_base(metadata=metadata)
+
 
 def get_db():
     db = SessionLocal()
