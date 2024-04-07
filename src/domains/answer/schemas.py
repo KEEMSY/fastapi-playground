@@ -1,3 +1,5 @@
+import datetime
+
 from pydantic import BaseModel, field_validator
 
 
@@ -9,3 +11,9 @@ class AnswerCreate(BaseModel):
         if not v or not v.strip():
             raise ValueError("Content can't be empty")
         return v
+
+
+class Answer(BaseModel):
+    id: int
+    content: str
+    create_date: datetime.datetime
