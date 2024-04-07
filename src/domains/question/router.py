@@ -2,15 +2,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from src.database import get_db
-from src.domains.question import schemas
-from src.domains.question.models import Question
+from src.domains.question import schemas as question_schema, service as question_service
 
 router = APIRouter(
     prefix="/api/question",
 )
 
 
-@router.get("/list", response_model=list[schemas.Question])
+@router.get("/list", response_model=list[question_schema.Question])
 def question_list(db: Session = Depends(get_db)):
-    _question_list = db.query(Question).order_by(Question.create_date.desc()).all()
+    _question_list = question_service.get_question_list(db)
     return _question_list
