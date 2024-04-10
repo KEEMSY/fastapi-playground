@@ -2,6 +2,12 @@ from pydantic import BaseModel, field_validator, EmailStr
 from pydantic_core.core_schema import ValidationInfo
 
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    username: str
+
+
 class UserCreate(BaseModel):
     username: str
     password1: str
