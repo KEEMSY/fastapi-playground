@@ -1,3 +1,5 @@
+import qs from "qs"
+
 const fastapi = (operation, url, params, success_callback, failure_callback) => {
     let method = operation
     let content_type = 'application/json'
@@ -13,6 +15,12 @@ const fastapi = (operation, url, params, success_callback, failure_callback) => 
         headers: {
             "Content-Type": content_type
         }
+    }
+
+    if(operation === 'login') {
+        method = 'post'
+        content_type = 'application/x-www-form-urlencoded'
+        body = qs.stringify(params)
     }
 
     if (method !== 'get') {
