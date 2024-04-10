@@ -10,17 +10,17 @@ const fastapi = (operation, url, params, success_callback, failure_callback) => 
         _url += "?" + new URLSearchParams(params)
     }
 
+    if(operation === 'login') {
+        method = 'post'
+        content_type = 'application/x-www-form-urlencoded'
+        body = qs.stringify(params)
+    }
+
     let options = {
         method: method,
         headers: {
             "Content-Type": content_type
         }
-    }
-
-    if(operation === 'login') {
-        method = 'post'
-        content_type = 'application/x-www-form-urlencoded'
-        body = qs.stringify(params)
     }
 
     if (method !== 'get') {
