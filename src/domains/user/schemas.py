@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator, EmailStr
-from pydantic_core.core_schema import FieldValidationInfo
+from pydantic_core.core_schema import ValidationInfo
 
 
 class UserCreate(BaseModel):
@@ -15,7 +15,7 @@ class UserCreate(BaseModel):
         return v
 
     @field_validator("password2")
-    def passwords_match(cls, v, info: FieldValidationInfo):
+    def passwords_match(cls, v, info: ValidationInfo):
         if "password1" in info.data and v != info.data["password1"]:
             raise ValueError("Passwords do not match")
         return v
