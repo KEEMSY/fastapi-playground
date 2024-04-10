@@ -3,9 +3,9 @@ from starlette.middleware.cors import CORSMiddleware
 
 from src.domains.question import router as question_router
 from src.domains.answer import router as answer_router
+from src.domains.user import router as user_router
 
 app = FastAPI()
-
 
 origins = [
     "http://localhost:5173",
@@ -21,6 +21,7 @@ app.add_middleware(
 
 app.include_router(question_router.router)
 app.include_router(answer_router.router)
+app.include_router(user_router.router)
 
 
 @app.get("/")
