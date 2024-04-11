@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, MetaData
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 """
@@ -19,7 +19,7 @@ create_engine, sessionmaker 등을 사용하는것은 SQLAlchemy 데이터베이
 """
 
 SQLALCHEMY_DATABASE_URL = (
-    "mysql+mysqlconnector://root:test@localhost:13306/fastapi_playground"
+    "mysql+pymysql://root:test@localhost:13306/fastapi_playground"
 )
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

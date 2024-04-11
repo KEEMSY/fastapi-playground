@@ -6,7 +6,11 @@ from sqlalchemy import pool
 from alembic import context
 
 from src.database import Base
-
+### 삭제되면 안됨 시작 ###
+from src.domains.user.models import User
+from src.domains.question.models import Question
+from src.domains.answer.models import Answer
+### 삭제되면 안됨 끝 ###
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
