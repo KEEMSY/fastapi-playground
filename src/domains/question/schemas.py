@@ -32,3 +32,7 @@ class QuestionCreate(BaseModel):
         if not v or not v.strip():
             raise ValueError("Subject and content can't be empty")
         return v
+
+
+class QuestionUpdate(QuestionCreate):
+    question_id: int
