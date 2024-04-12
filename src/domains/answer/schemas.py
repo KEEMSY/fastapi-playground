@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+from typing import Union
 
 from pydantic import BaseModel, field_validator
 
@@ -21,4 +22,4 @@ class Answer(BaseModel):
     id: int
     content: str
     create_date: datetime.datetime
-    user: User | None
+    user: Union[User, None]
