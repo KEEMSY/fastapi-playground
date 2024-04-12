@@ -25,3 +25,9 @@ class UserCreate(BaseModel):
         if "password1" in info.data and v != info.data["password1"]:
             raise ValueError("Passwords do not match")
         return v
+
+
+class User(BaseModel):
+    id: int
+    username: str
+    email: str

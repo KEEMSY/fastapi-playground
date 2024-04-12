@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import datetime
 
 from pydantic import BaseModel, field_validator
+
+from src.domains.user.schemas import User
 
 
 class AnswerCreate(BaseModel):
@@ -17,3 +21,4 @@ class Answer(BaseModel):
     id: int
     content: str
     create_date: datetime.datetime
+    user: User | None
