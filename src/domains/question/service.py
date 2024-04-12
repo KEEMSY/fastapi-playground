@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from src.domains.question.models import Question
-from src.domains.question.schemas import QuestionCreate
+from src.domains.question.schemas import QuestionCreate, QuestionUpdate
 from src.domains.user.models import User
 
 
@@ -29,4 +29,12 @@ def create_question(db: Session, question_create: QuestionCreate, user: User):
         user=user
     )
     db.add(db_question)
+    db.commit()
+
+
+def update_question(db: Session, question_model: Question, question_update: QuestionUpdate):
+    question_model.subject = question_update.subject
+    question_model.content = question_update.content
+    question_model.modify_date = datetime.now()
+    db.add(question_model)
     db.commit()
