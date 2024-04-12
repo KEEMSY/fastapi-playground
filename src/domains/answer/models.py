@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from src.database import Base
@@ -16,7 +16,9 @@ class Answer(Base):
     __tablename__ = "answer"
 
     id = Column(Integer, primary_key=True)
-    content = Column(Text, nullable=False)
+    content = Column(String(255), nullable=False)
     create_date = Column(DateTime, nullable=False)
     question_id = Column(Integer, ForeignKey("question.id"))
     question = relationship("Question", backref="answers")
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user = relationship("User", backref="answer_users")
