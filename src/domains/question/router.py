@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
 
 from src.database import get_db
 from src.domains.question import schemas as question_schema, service as question_service
+from src.domains.user.schemas import User
 from src.domains.user.router import get_current_user
 
 router = APIRouter(
@@ -32,3 +33,19 @@ def question_create(
         current_user=Depends(get_current_user)
 ):
     question_service.create_question(db=db, question_create=_question_create, user=current_user)
+
+
+@router.put("/update", status_code=status.HTTP_204_NO_CONTENT)
+def question_update(_question_update: question_schema.QuestionUpdate,
+                    db: Session = Depends(get_db),
+                    current_user: User = Depends(get_current_user)):
+    question_model = question_service.get_question(db, question_id=_question_update.question_id)
+    if not question_model:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="데이터를 찾을수 없습니다.")
+
+    if current_user.id != question_model.user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="수정 권한이 없습니다.")
+    question_service.update_question(db=db, question_model=question_model,
+                                     question_update=_question_update)
