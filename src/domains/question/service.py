@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from src.domains.question.models import Question
 from src.domains.question.schemas import QuestionCreate
+from src.domains.user.models import User
 
 
 # offset: 시작 위치, limit: 가져올 데이터 수
@@ -20,11 +21,12 @@ def get_question(db: Session, question_id: int):
     return question
 
 
-def create_question(db: Session, question_create: QuestionCreate):
+def create_question(db: Session, question_create: QuestionCreate, user: User):
     db_question = Question(
         subject=question_create.subject,
         content=question_create.content,
         create_date=datetime.now(),
+        user=user
     )
     db.add(db_question)
     db.commit()
