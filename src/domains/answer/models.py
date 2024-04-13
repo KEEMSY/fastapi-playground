@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, String
+from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, String, Table
 from sqlalchemy.orm import relationship
 
 from src.database import Base
@@ -12,6 +12,14 @@ question = relationship("Question", backref="answers")
 """
 
 
+answer_voter = Table(
+    'answer_voter',
+    Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+    Column('answer_id', Integer, ForeignKey('answer.id'), primary_key=True)
+)
+
+
 class Answer(Base):
     __tablename__ = "answer"
 
@@ -23,3 +31,4 @@ class Answer(Base):
     question = relationship("Question", backref="answers")
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     user = relationship("User", backref="answer_users")
+    voter = relationship('User', secondary=answer_voter, backref='answer_voters')
