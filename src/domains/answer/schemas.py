@@ -18,8 +18,17 @@ class AnswerCreate(BaseModel):
         return v
 
 
+class AnswerUpdate(AnswerCreate):
+    answer_id: int
+
+
+class AnswerDelete(BaseModel):
+    answer_id: int
+
+
 class Answer(BaseModel):
     id: int
     content: str
     create_date: datetime.datetime
     user: Union[User, None]
+    question_id: int
