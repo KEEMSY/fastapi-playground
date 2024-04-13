@@ -30,5 +30,6 @@ class Answer(BaseModel):
     id: int
     content: str
     create_date: datetime.datetime
+    modify_date: Union[datetime.datetime, None] = None
     user: Union[User, None]
     question_id: int

@@ -14,6 +14,7 @@ class Question(BaseModel):
     subject: str
     content: str
     create_date: datetime.datetime
+    modify_date: Union[datetime.datetime, None] = None
     answers: list[Answer] = []
     user: Union[User, None]
 
