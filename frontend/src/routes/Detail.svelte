@@ -86,6 +86,12 @@
                     <div class="mb-2">{ question.user ? question.user.username : ""}</div>
                     <div>{moment(question.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
                 </div>
+                {#if question.modify_date }
+                <div class="badge bg-light text-dark p-2 text-start mx-3">
+                    <div class="mb-2">modified at</div>
+                    <div>{moment(question.modify_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
+                </div>
+                {/if}
             </div>
             <div class="my-3">
                 {#if question.user && $username === question.user.username }
@@ -113,6 +119,12 @@
                     <div class="mb-2">{ answer.user ? answer.user.username : ""}</div>
                     <div>{moment(answer.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
                 </div>
+                {#if answer.modify_date }
+                <div class="badge bg-light text-dark p-2 text-start mx-3">
+                    <div class="mb-2">modified at</div>
+                    <div>{moment(answer.modify_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
+                </div>
+                {/if}
             </div>
             <div class="my-3">
                 {#if answer.user && $username === answer.user.username }
