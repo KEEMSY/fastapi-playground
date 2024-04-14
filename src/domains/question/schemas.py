@@ -17,6 +17,7 @@ class Question(BaseModel):
     modify_date: Union[datetime.datetime, None] = None
     answers: list[Answer] = []
     user: Union[User, None]
+    voter: list[User] = []
 
 
 class QuestionList(BaseModel):
@@ -40,4 +41,8 @@ class QuestionUpdate(QuestionCreate):
 
 
 class QuestionDelete(BaseModel):
+    question_id: int
+
+
+class QuestionVote(BaseModel):
     question_id: int

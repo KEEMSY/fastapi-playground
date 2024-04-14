@@ -43,3 +43,8 @@ def update_question(db: Session, question_model: Question, question_update: Ques
 def delete_question(db: Session, question_model: Question):
     db.delete(question_model)
     db.commit()
+
+
+def vote_question(db: Session, question_model: Question, db_user: User):
+    question_model.voter.append(db_user)
+    db.commit()
