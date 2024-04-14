@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from starlette import status
 
 from src.database import get_db
-from src.domains.answer.schemas import AnswerCreate, Answer, AnswerUpdate, AnswerDelete
+from src.domains.answer.schemas import AnswerCreate, Answer, AnswerUpdate, AnswerDelete, AnswerVote
 from src.domains.answer import service as answer_service
 from src.domains.question import service as question_service
 from src.domains.user.router import get_current_user
@@ -85,3 +85,14 @@ def answer_delete2(_answer_delete: AnswerDelete,
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="삭제 권한이 없습니다.")
     answer_service.delete_answer(db=db, db_answer=db_answer)
+
+
+@router.post("/vote", status_code=status.HTTP_204_NO_CONTENT)
+def answer_vote(_answer_vote: AnswerVote,
+                db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
+    db_answer = answer_service.get_answer_by_id(db, answer_id=_answer_vote.answer_id)
+    if not db_answer:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="데이터를 찾을수 없습니다.")
+    answer_service.vote_answer(db, db_answer=db_answer, db_user=current_user)

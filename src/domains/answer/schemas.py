@@ -26,6 +26,10 @@ class AnswerDelete(BaseModel):
     answer_id: int
 
 
+class AnswerVote(BaseModel):
+    answer_id: int
+
+
 class Answer(BaseModel):
     id: int
     content: str
@@ -33,3 +37,4 @@ class Answer(BaseModel):
     modify_date: Union[datetime.datetime, None] = None
     user: Union[User, None]
     question_id: int
+    voter: list[User] = []
