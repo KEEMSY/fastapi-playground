@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine, MetaData
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -18,11 +19,16 @@ create_engine, sessionmaker 등을 사용하는것은 SQLAlchemy 데이터베이
   commit이 필요없는 것처럼 rollback도 동작하지 않는다.
 """
 
-SQLALCHEMY_DATABASE_URL = (
-    "mysql+pymysql://root:test@localhost:13306/fastapi_playground"
-)
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# 동기 방식으로 데이터베이스를 사용할 때 사용하는 코드
+# SQLALCHEMY_DATABASE_URL = (
+#     "mysql+pymysql://root:test@localhost:13306/fastapi_playground"
+# )
+# engine = create_engine(SQLALCHEMY_DATABASE_URL)
+# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+SQLALCHEMY_DATABASE_URL = "mysql+asyncmy://root:test@localhost:13306/fastapi_playground"
+async_engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
 
 MYSQL_INDEXES_NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
@@ -35,9 +41,18 @@ metadata = MetaData(naming_convention=MYSQL_INDEXES_NAMING_CONVENTION)
 Base = declarative_base(metadata=metadata)
 
 
-def get_db():
-    db = SessionLocal()
+async def get_async_db():
+    db = AsyncSession(bind=async_engine)
     try:
         yield db
     finally:
-        db.close()
+        await db.close()
+
+
+# 동기 방식으로 데이터베이스를 사용할 때 사용하는 코드
+# def get_db():
+#     db = SessionLocal()
+#     try:
+#         yield db
+#     finally:
+#         db.close()
