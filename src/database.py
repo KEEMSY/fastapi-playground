@@ -19,16 +19,15 @@ create_engine, sessionmaker 등을 사용하는것은 SQLAlchemy 데이터베이
   commit이 필요없는 것처럼 rollback도 동작하지 않는다.
 """
 
-# 동기 방식으로 데이터베이스를 사용할 때 사용하는 코드
-# SQLALCHEMY_DATABASE_URL = (
-#     "mysql+pymysql://root:test@localhost:13306/fastapi_playground"
-# )
-# engine = create_engine(SQLALCHEMY_DATABASE_URL)
-# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SYNC_SQLALCHEMY_DATABASE_URL = (
+    "mysql+pymysql://root:test@localhost:13306/fastapi_playground"
+)
+engine = create_engine(SYNC_SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-SQLALCHEMY_DATABASE_URL = "mysql+asyncmy://root:test@localhost:13306/fastapi_playground"
-async_engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
+ASYNC_SQLALCHEMY_DATABASE_URL = "mysql+asyncmy://root:test@localhost:13306/fastapi_playground"
+async_engine = create_async_engine(ASYNC_SQLALCHEMY_DATABASE_URL, echo=True)
 
 MYSQL_INDEXES_NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
@@ -49,10 +48,9 @@ async def get_async_db():
         await db.close()
 
 
-# 동기 방식으로 데이터베이스를 사용할 때 사용하는 코드
-# def get_db():
-#     db = SessionLocal()
-#     try:
-#         yield db
-#     finally:
-#         db.close()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
