@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from starlette import status
 
-from src.database import get_db
+from src.database import get_db, get_async_db
 from src.domains.question import schemas as question_schema, service as question_service
 from src.domains.user.schemas import User
 from src.domains.user.router import get_current_user
@@ -13,16 +14,18 @@ router = APIRouter(
 
 
 @router.get("/list", response_model=question_schema.QuestionList)
-def question_list(db: Session = Depends(get_db), page: int = 0, size: int = 10, keyword:str = ''):
-    total, _question_list = question_service.get_question_list(
+async def question_list(db: AsyncSession = Depends(get_async_db), page: int = 0, size: int = 10, keyword:str = ''):
+    total, _question_list = await question_service.get_question_list(
         db, offset=page * size, limit=size, keyword=keyword
     )
     return {"total": total, "question_list": _question_list}
 
 
 @router.get("/detail/{question_id}", response_model=question_schema.Question)
-def question_detail(question_id: int, db: Session = Depends(get_db)):
-    question = question_service.get_question(db, question_id=question_id)
+async def question_detail(question_id: int, db: AsyncSession = Depends(get_async_db)):
+    question = await question_service.get_question(db, question_id)
+    if question is None:
+        raise HTTPException(status_code=404, detail="Question not found")
     return question
 
 

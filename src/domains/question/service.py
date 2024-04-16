@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy import and_
-from sqlalchemy.orm import Session
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session, selectinload
 
 from src.domains.answer.models import Answer
 from src.domains.question.models import Question
@@ -10,29 +11,46 @@ from src.domains.user.models import User
 
 
 # offset: 시작 위치, limit: 가져올 데이터 수
-def get_question_list(db: Session, offset: int = 0, limit: int = 10, keyword: str = ''):
-    question_list = db.query(Question)
+async def get_question_list(db: AsyncSession, offset: int = 0, limit: int = 10, keyword: str = ''):
+    query = select(Question)
     if keyword:
         search = '%%{}%%'.format(keyword)
-        sub_query = db.query(Answer.question_id, Answer.content, User.username) \
-            .outerjoin(User, and_(Answer.user_id == User.id)).subquery()
-        question_list = question_list \
+        sub_query = select(Answer.question_id, Answer.content, User.username) \
+            .outerjoin(User, Answer.user_id == User.id).subquery()
+        query = query \
             .outerjoin(User) \
-            .outerjoin(sub_query, and_(sub_query.c.question_id == Question.id)) \
-            .filter(Question.subject.ilike(search) |        # 질문제목
-                    Question.content.ilike(search) |        # 질문내용
-                    User.username.ilike(search) |           # 질문작성자
-                    sub_query.c.content.ilike(search) |     # 답변내용
-                    sub_query.c.username.ilike(search)      # 답변작성자
+            .outerjoin(sub_query, sub_query.c.question_id == Question.id) \
+            .filter(Question.subject.ilike(search) |  # 질문제목
+                    Question.content.ilike(search) |  # 질문내용
+                    User.username.ilike(search) |  # 질문작성자
+                    sub_query.c.content.ilike(search) |  # 답변내용
+                    sub_query.c.username.ilike(search)  # 답변작성자
                     )
-    total = question_list.distinct().count()
-    question_list = question_list.order_by(Question.create_date.desc())\
-        .offset(offset).limit(limit).distinct().all()
-    return total, question_list  # (전체 건수, 페이징 적용된 질문 목록)
+    total = await db.execute(select(func.count()).select_from(query))
+    question_list = await db.execute(query.offset(offset).limit(limit)
+                                     .order_by(Question.create_date.desc())
+                                     .distinct()
+                                     .options(selectinload(Question.answers).selectinload(Answer.voter))
+                                     .options(selectinload(Question.answers).selectinload(Answer.user))
+                                     .options(selectinload(Question.user))
+                                     .options(selectinload(Question.voter))
+                                     )
+    return total.scalar_one(), question_list.scalars().fetchall()  # (전체 건수, 페이징 적용된 질문 목록)
 
 
-def get_question(db: Session, question_id: int):
-    question = db.query(Question).get(question_id)
+async def get_question(db: AsyncSession, question_id: int):
+    stmt = (
+        select(Question)
+        .where(Question.id == question_id)
+        .options(
+            selectinload(Question.user),
+            selectinload(Question.voter),
+            selectinload(Question.answers).selectinload(Answer.user),
+            selectinload(Question.answers).selectinload(Answer.voter)
+        )
+    )
+    result = await db.execute(stmt)
+    question = result.scalars().one_or_none()
     return question
 
 
