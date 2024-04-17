@@ -3,10 +3,11 @@ from datetime import datetime, timedelta
 from fastapi import Depends, APIRouter, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from starlette import status
 
-from src.database import get_db
+from src.database import get_db, get_async_db
 from src.domains.user.schemas import UserCreate, Token
 from src.domains.user import service as user_service
 from src.domains.user.service import pwd_context
@@ -21,8 +22,8 @@ ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme),
-                     db: Session = Depends(get_db)):
+async def get_current_user(token: str = Depends(oauth2_scheme),
+                           db: AsyncSession = Depends(get_async_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -39,7 +40,7 @@ def get_current_user(token: str = Depends(oauth2_scheme),
     except JWTError:
         raise credentials_exception
     else:
-        user = user_service.get_user(db, username=username)
+        user = await user_service.get_user(db, username=username)
         if user is None:
             raise credentials_exception
         return user

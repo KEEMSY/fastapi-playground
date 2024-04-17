@@ -54,15 +54,13 @@ async def get_question(db: AsyncSession, question_id: int):
     return question
 
 
-def create_question(db: Session, question_create: QuestionCreate, user: User):
-    db_question = Question(
-        subject=question_create.subject,
-        content=question_create.content,
-        create_date=datetime.now(),
-        user=user
-    )
+async def create_question(db: AsyncSession, question_create: QuestionCreate, user: User):
+    db_question = Question(subject=question_create.subject,
+                           content=question_create.content,
+                           create_date=datetime.now(),
+                           user=user)
     db.add(db_question)
-    db.commit()
+    await db.commit()
 
 
 def update_question(db: Session, question_model: Question, question_update: QuestionUpdate):

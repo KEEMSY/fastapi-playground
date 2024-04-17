@@ -14,7 +14,7 @@ router = APIRouter(
 
 
 @router.get("/list", response_model=question_schema.QuestionList)
-async def question_list(db: AsyncSession = Depends(get_async_db), page: int = 0, size: int = 10, keyword:str = ''):
+async def question_list(db: AsyncSession = Depends(get_async_db), page: int = 0, size: int = 10, keyword: str = ''):
     total, _question_list = await question_service.get_question_list(
         db, offset=page * size, limit=size, keyword=keyword
     )
@@ -30,12 +30,11 @@ async def question_detail(question_id: int, db: AsyncSession = Depends(get_async
 
 
 @router.post("/create", status_code=status.HTTP_204_NO_CONTENT)
-def question_create(
-        _question_create: question_schema.QuestionCreate,
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
-):
-    question_service.create_question(db=db, question_create=_question_create, user=current_user)
+async def question_create(_question_create: question_schema.QuestionCreate,
+                          db: AsyncSession = Depends(get_async_db),
+                          current_user: User = Depends(get_current_user)):
+    await question_service.create_question(db=db, question_create=_question_create,
+                                           user=current_user)
 
 
 @router.put("/update", status_code=status.HTTP_204_NO_CONTENT)

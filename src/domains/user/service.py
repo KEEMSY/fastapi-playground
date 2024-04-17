@@ -1,4 +1,6 @@
 from passlib.context import CryptContext
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from src.domains.user.models import User
@@ -27,5 +29,6 @@ def get_existing_user(db: Session, user_create: UserCreate):
     )
 
 
-def get_user(db: Session, username: str):
-    return db.query(User).filter(User.username == username).first()
+async def get_user(db: AsyncSession, username: str):
+    result = await db.execute(select(User).filter(User.username == username))
+    return result.scalar_one()
