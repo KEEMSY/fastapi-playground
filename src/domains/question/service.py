@@ -71,11 +71,11 @@ async def update_question(db: AsyncSession, question_model: Question, question_u
     await db.commit()
 
 
-def delete_question(db: Session, question_model: Question):
-    db.delete(question_model)
-    db.commit()
+async def delete_question(db: AsyncSession, question_model: Question):
+    await db.delete(question_model)
+    await db.commit()
 
 
-def vote_question(db: Session, question_model: Question, db_user: User):
+async def vote_question(db: AsyncSession, question_model: Question, db_user: User):
     question_model.voter.append(db_user)
-    db.commit()
+    await db.commit()
