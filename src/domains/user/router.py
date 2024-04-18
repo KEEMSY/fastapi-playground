@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from starlette import status
 
 from src.database import get_db, get_async_db
+from src.domains.user.models import User
 from src.domains.user.schemas import UserCreate, Token
 from src.domains.user import service as user_service
 from src.domains.user.service import pwd_context
@@ -23,7 +24,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login")
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme),
-                           db: AsyncSession = Depends(get_async_db)):
+                           db: AsyncSession = Depends(get_async_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -59,9 +60,8 @@ def user_create(_user_create: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_async_db)
+        form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_async_db)
 ):
-
     # check user and password
     user = await user_service.get_user(db, form_data.username)
     if not user or not pwd_context.verify(form_data.password, user.password):

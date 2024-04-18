@@ -38,19 +38,19 @@ async def question_create(_question_create: question_schema.QuestionCreate,
 
 
 @router.put("/update", status_code=status.HTTP_204_NO_CONTENT)
-def question_update(_question_update: question_schema.QuestionUpdate,
-                    db: Session = Depends(get_db),
-                    current_user: User = Depends(get_current_user)):
-    question_model = question_service.get_question(db, question_id=_question_update.question_id)
+async def question_update(_question_update: question_schema.QuestionUpdate,
+                          db: AsyncSession = Depends(get_async_db),
+                          current_user: User = Depends(get_current_user)):
+    question_model = await question_service.get_question(db, question_id=_question_update.question_id)
     if not question_model:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="데이터를 찾을수 없습니다.")
 
-    if current_user.id != question_model.user.id:
+    if current_user.id != question_model.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="수정 권한이 없습니다.")
-    question_service.update_question(db=db, question_model=question_model,
-                                     question_update=_question_update)
+    await question_service.update_question(db=db, question_model=question_model,
+                                           question_update=_question_update)
 
 
 @router.delete("/delete", status_code=status.HTTP_204_NO_CONTENT)
