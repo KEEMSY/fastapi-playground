@@ -29,6 +29,10 @@ def get_existing_user(db: Session, user_create: UserCreate):
     )
 
 
-async def get_user(db: AsyncSession, username: str):
+async def get_user_async(db: AsyncSession, username: str):
     result = await db.execute(select(User).filter(User.username == username))
     return result.scalar_one()
+
+
+def get_user_sync(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()

@@ -23,8 +23,29 @@ ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login")
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme),
-                           db: AsyncSession = Depends(get_async_db)) -> User:
+def get_current_user_with_sync(token: str = Depends(oauth2_scheme),
+                               db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    else:
+        user = user_service.get_user_sync(db, username=username)
+        if user is None:
+            raise credentials_exception
+        return user
+
+
+async def get_current_user_with_async(token: str = Depends(oauth2_scheme),
+                                      db: AsyncSession = Depends(get_async_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -41,7 +62,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme),
     except JWTError:
         raise credentials_exception
     else:
-        user = await user_service.get_user(db, username=username)
+        user = await user_service.get_user_async(db, username=username)
         if user is None:
             raise credentials_exception
         return user
@@ -63,7 +84,7 @@ async def login_for_access_token(
         form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_async_db)
 ):
     # check user and password
-    user = await user_service.get_user(db, form_data.username)
+    user = await user_service.get_user_async(db, form_data.username)
     if not user or not pwd_context.verify(form_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

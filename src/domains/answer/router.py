@@ -6,7 +6,7 @@ from src.database import get_db
 from src.domains.answer.schemas import AnswerCreate, Answer, AnswerUpdate, AnswerDelete, AnswerVote
 from src.domains.answer import service as answer_service
 from src.domains.question import service as question_service
-from src.domains.user.router import get_current_user
+from src.domains.user.router import get_current_user_with_sync
 from src.domains.user.schemas import User
 
 router = APIRouter(
@@ -19,7 +19,7 @@ def answer_create(
         question_id: int,
         _answer_create: AnswerCreate,
         db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
+        current_user=Depends(get_current_user_with_sync)
 ):
     # create answer
     question = question_service.get_question(db, question_id=question_id)
@@ -42,7 +42,7 @@ def answer_detail(answer_id: int, db: Session = Depends(get_db)):
 @router.put("/update", status_code=status.HTTP_204_NO_CONTENT)
 def answer_update(_answer_update: AnswerUpdate,
                   db: Session = Depends(get_db),
-                  current_user: User = Depends(get_current_user)):
+                  current_user: User = Depends(get_current_user_with_sync)):
     """
     답변 수정
     answer_id 를 path params 로 받지 않는 이유: body 에서 AnswerUpdate 를 받기 때문
@@ -60,7 +60,7 @@ def answer_update(_answer_update: AnswerUpdate,
 
 @router.delete("/delete/{answer_id}", status_code=status.HTTP_204_NO_CONTENT)
 def answer_delete(answer_id: int, db: Session = Depends(get_db),
-                  current_user: User = Depends(get_current_user)):
+                  current_user: User = Depends(get_current_user_with_sync)):
     """삭제 방법 1. answer_id 를 path params 로 받는 방법"""
     db_answer = answer_service.get_answer_by_id(db, answer_id=answer_id)
     if not db_answer:
@@ -75,7 +75,7 @@ def answer_delete(answer_id: int, db: Session = Depends(get_db),
 @router.delete("/delete2", status_code=status.HTTP_204_NO_CONTENT)
 def answer_delete2(_answer_delete: AnswerDelete,
                    db: Session = Depends(get_db),
-                   current_user: User = Depends(get_current_user)):
+                   current_user: User = Depends(get_current_user_with_sync)):
     """삭제 방법 2. answer_id 를 body 에서 받는 방법(AnswerDelete)"""
     db_answer = answer_service.get_answer_by_id(db, answer_id=_answer_delete.answer_id)
     if not db_answer:
@@ -90,7 +90,7 @@ def answer_delete2(_answer_delete: AnswerDelete,
 @router.post("/vote", status_code=status.HTTP_204_NO_CONTENT)
 def answer_vote(_answer_vote: AnswerVote,
                 db: Session = Depends(get_db),
-                current_user: User = Depends(get_current_user)):
+                current_user: User = Depends(get_current_user_with_sync)):
     db_answer = answer_service.get_answer_by_id(db, answer_id=_answer_vote.answer_id)
     if not db_answer:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,

@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 from starlette import status
 
 from src.database import get_db, get_async_db
 from src.domains.question import schemas as question_schema, service as question_service
 from src.domains.user.schemas import User
-from src.domains.user.router import get_current_user
+from src.domains.user.router import get_current_user_with_async
 
 router = APIRouter(
     prefix="/api/question",
@@ -32,7 +31,7 @@ async def question_detail(question_id: int, db: AsyncSession = Depends(get_async
 @router.post("/create", status_code=status.HTTP_204_NO_CONTENT)
 async def question_create(_question_create: question_schema.QuestionCreate,
                           db: AsyncSession = Depends(get_async_db),
-                          current_user: User = Depends(get_current_user)):
+                          current_user: User = Depends(get_current_user_with_async)):
     await question_service.create_question(db=db, question_create=_question_create,
                                            user=current_user)
 
@@ -40,7 +39,7 @@ async def question_create(_question_create: question_schema.QuestionCreate,
 @router.put("/update", status_code=status.HTTP_204_NO_CONTENT)
 async def question_update(_question_update: question_schema.QuestionUpdate,
                           db: AsyncSession = Depends(get_async_db),
-                          current_user: User = Depends(get_current_user)):
+                          current_user: User = Depends(get_current_user_with_async)):
     question_model = await question_service.get_question(db, question_id=_question_update.question_id)
     if not question_model:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -56,7 +55,7 @@ async def question_update(_question_update: question_schema.QuestionUpdate,
 @router.delete("/delete", status_code=status.HTTP_204_NO_CONTENT)
 async def question_delete(_question_delete: question_schema.QuestionDelete,
                           db: AsyncSession = Depends(get_async_db),
-                          current_user: User = Depends(get_current_user)):
+                          current_user: User = Depends(get_current_user_with_async)):
     question_model = await question_service.get_question(db, question_id=_question_delete.question_id)
     if not question_model:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -70,7 +69,7 @@ async def question_delete(_question_delete: question_schema.QuestionDelete,
 @router.post("/vote", status_code=status.HTTP_204_NO_CONTENT)
 async def question_vote(_question_vote: question_schema.QuestionVote,
                         db: AsyncSession = Depends(get_async_db),
-                        current_user: User = Depends(get_current_user)):
+                        current_user: User = Depends(get_current_user_with_async)):
     question_model = await question_service.get_question(db, question_id=_question_vote.question_id)
     if not question_model:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
