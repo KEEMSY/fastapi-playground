@@ -33,12 +33,12 @@ async def http_exception_handler(request, exc):
 
 @app.exception_handler(PLException)
 async def pl_exception_handler(request, exc):
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    return JSONResponse(status_code=exc.status_code, content={"code": exc.code, "detail": exc.detail})
 
 
 @app.exception_handler(BLException)
 async def bl_exception_handler(request, exc):
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    return JSONResponse(status_code=exc.status_code, content={"code": exc.code, "detail": exc.detail})
 
 
 @app.exception_handler(DLException)
