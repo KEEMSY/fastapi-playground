@@ -88,10 +88,11 @@ def get_sync_example_list(db: Session, limit: int = 10, offset: int = 0) -> Sync
 
 
 def update_sync_example(db: Session, example_id: int, request):
+    target_example = db.query(SyncExample).get(example_id)
+    if target_example is None:
+        raise DLException(detail="SyncExample not found")
+
     try:
-        target_example = db.query(SyncExample).get(example_id)
-        if target_example is None:
-            raise DLException(detail="SyncExample not found")
 
         target_example.name = request.name
         target_example.description = request.description
