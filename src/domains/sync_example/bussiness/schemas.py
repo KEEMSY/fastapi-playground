@@ -16,6 +16,7 @@ class SyncExampleSchema(BaseModel):
 
     class Config:
         from_attributes = True
+        extra = 'forbid'
 
 
 class SyncExampleListSchema(BaseModel):
@@ -24,3 +25,4 @@ class SyncExampleListSchema(BaseModel):
 
     class Config:
         from_attributes = True
+        extra = 'forbid'

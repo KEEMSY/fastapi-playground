@@ -10,6 +10,10 @@ class CreateSyncExample(BaseModel):
     name: str
     description: str
 
+    class Config:
+        from_attributes = True
+        extra = 'forbid'
+
 
 class SyncExampleResponse(BaseModel):
     id: int
@@ -21,6 +25,7 @@ class SyncExampleResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        extra = 'forbid'
 
 
 class SyncExampleListResponse(BaseModel):
@@ -29,6 +34,7 @@ class SyncExampleListResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        extra = 'forbid'
 
 
 class UpdateSyncExampleV1(CreateSyncExample):
@@ -37,3 +43,4 @@ class UpdateSyncExampleV1(CreateSyncExample):
 
 class UpdateSyncExampleV2(CreateSyncExample):
     sync_example_id: int
+
