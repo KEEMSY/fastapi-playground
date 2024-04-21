@@ -6,12 +6,24 @@ from starlette.exceptions import HTTPException
 
 from src.database import get_db
 from src.domains.sync_example.bussiness import service as example_service
-from src.domains.sync_example.bussiness.schemas import SyncExampleSchema
-from src.domains.sync_example.presentation.schemas import SyncExampleResponse, CreateSyncExample
+from src.domains.sync_example.bussiness.schemas import SyncExampleSchema, SyncExampleListSchema
+from src.domains.sync_example.presentation.schemas import SyncExampleResponse, CreateSyncExample, \
+    SyncExampleListResponse
 
 router = APIRouter(
     prefix="/api/sync/no-login",
 )
+
+
+@router.get("/sync/example/list", response_model=SyncExampleListResponse, tags=["with_no_login_sync_example"])
+def read_sync_example_list(db: Session = Depends(get_db), limit: int = 10, offset: int = 0):
+    sync_example_list_schema: SyncExampleListSchema = example_service.get_sync_example_list(db, limit=limit,
+                                                                                            offset=limit * offset)
+
+    return SyncExampleListResponse(
+        total=sync_example_list_schema.total,
+        examples=sync_example_list_schema.example_list
+    )
 
 
 @router.get("/sync/example/{example_id}", response_model=SyncExampleResponse, tags=["with_no_login_sync_example"])
@@ -23,7 +35,7 @@ def read_sync_example(example_id: int, db: Session = Depends(get_db)):
     return SyncExampleResponse.model_validate(example)
 
 
-@router.post("/sync/example", response_model= SyncExampleResponse, status_code=status.HTTP_201_CREATED,
+@router.post("/sync/example", response_model=SyncExampleResponse, status_code=status.HTTP_201_CREATED,
              tags=["with_no_login_sync_example"])
 def create_sync_example(request: CreateSyncExample, db: Session = Depends(get_db)):
     try:

@@ -2,7 +2,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from src.domains.sync_example.bussiness.schemas import SyncExampleSchema
+from src.domains.sync_example.bussiness.schemas import SyncExampleSchema, SyncExampleListSchema
 from src.domains.sync_example.database import crud as example_crud
 from src.domains.sync_example.presentation.schemas import CreateSyncExample
 from src.exceptions import BLException, DLException
@@ -36,3 +36,20 @@ def save_sync_example(db: Session, create_example_data: CreateSyncExample) -> Sy
         # Handle unexpected errors
         logger.error(f"Unexpected error while creating SyncExample: {str(e)}")
         raise BLException("An unexpected error occurred during the creation process")
+
+
+def get_sync_example_list(db: Session, limit: int = 10, offset: int = 0) -> SyncExampleListSchema:
+    try:
+        sync_example_list: SyncExampleListSchema = example_crud.get_sync_example_list(db, limit=limit, offset=offset)
+
+        if not sync_example_list.example_list:
+            logger.info("No SyncExamples found.")
+
+        return sync_example_list
+
+    except DLException as de:
+        logger.error(f"Error in retrieving SyncExamples: {de.detail}")
+        raise BLException("Could not fetch SyncExamples.")
+    except Exception as e:
+        logger.error(f"Unexpected error while fetching SyncExamples: {str(e)}")
+        raise BLException("An unexpected error occurred while fetching SyncExamples.")

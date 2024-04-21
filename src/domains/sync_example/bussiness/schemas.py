@@ -16,3 +16,11 @@ class SyncExampleSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SyncExampleListSchema(BaseModel):
+    total: int
+    example_list: list[SyncExampleSchema] = []
+
+    class Config:
+        from_attributes = True

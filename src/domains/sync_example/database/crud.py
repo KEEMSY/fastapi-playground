@@ -4,9 +4,9 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from src.domains.sync_example.bussiness.schemas import SyncExampleSchema
+from src.domains.sync_example.bussiness.schemas import SyncExampleSchema, SyncExampleListSchema
 from src.domains.sync_example.database.models import SyncExample
-from src.domains.sync_example.presentation.schemas import UpdateSyncExampleV1, UpdateSyncExampleV2, CreateSyncExample
+from src.domains.sync_example.presentation.schemas import CreateSyncExample
 from src.exceptions import DLException
 
 logger = logging.getLogger(__name__)
@@ -58,3 +58,29 @@ def create_sync_example(db: Session, create_example_data: CreateSyncExample) -> 
         db.rollback()
         logger.error(f"Unexpected error while creating SyncExample: {e}")
         raise DLException(detail="An unexpected error occurred while creating SyncExample.")
+
+
+def get_sync_example_list(db: Session, limit: int = 10, offset: int = 0) -> SyncExampleListSchema:
+    try:
+        _example_list = db.query(SyncExample).order_by(SyncExample.create_date.desc())
+
+        total = _example_list.count()
+        example_list = _example_list.offset(offset).limit(limit).all()
+        example_schema_list = [SyncExampleSchema.model_validate(example) for example in example_list]
+
+        return SyncExampleListSchema(
+            total=total,
+            examples=example_schema_list
+        )
+    except ValidationError as ve:
+        logger.error(f"Validation error while creating SyncExampleListSchema: {ve}")
+        raise DLException(detail="Validation error on data input.")
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error while creating SyncExampleListSchema: {e}")
+        raise DLException(detail="Database error occurred while creating SyncExampleListSchema.")
+
+    except Exception as e:
+        logger.error(f"Database error during retrieving SyncExamples: {str(e)}")
+        raise DLException(detail="Failed to retrieve SyncExample list.")

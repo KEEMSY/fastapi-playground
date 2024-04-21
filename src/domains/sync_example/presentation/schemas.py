@@ -26,3 +26,6 @@ class SyncExampleResponse(BaseModel):
 class SyncExampleListResponse(BaseModel):
     total: int
     example_list: list[SyncExampleResponse] = []
+
+    class Config:
+        from_attributes = True
