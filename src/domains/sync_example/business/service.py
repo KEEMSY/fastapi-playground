@@ -2,7 +2,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from src.domains.sync_example.bussiness.schemas import SyncExampleSchema, SyncExampleListSchema
+from src.domains.sync_example.business.schemas import SyncExampleSchema, SyncExampleListSchema
 from src.domains.sync_example.database import crud as example_crud
 from src.domains.sync_example.presentation.schemas import CreateSyncExample, UpdateSyncExampleV2, UpdateSyncExampleV1
 from src.exceptions import BLException, DLException

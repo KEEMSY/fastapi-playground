@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from src.domains.sync_example.bussiness.schemas import SyncExampleSchema, SyncExampleListSchema
+from src.domains.sync_example.business.schemas import SyncExampleSchema, SyncExampleListSchema
 from src.domains.sync_example.database.models import SyncExample
 from src.domains.sync_example.presentation.schemas import CreateSyncExample
 from src.exceptions import DLException
