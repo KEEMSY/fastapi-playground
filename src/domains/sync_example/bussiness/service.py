@@ -40,8 +40,8 @@ def save_sync_example(db: Session, create_example_data: CreateSyncExample) -> Sy
 
 def get_sync_example_list(db: Session, limit: int = 10, offset: int = 0) -> SyncExampleListSchema:
     try:
-        sync_example_list: SyncExampleListSchema = example_crud.get_sync_example_list(db, limit=limit, offset=offset)
-
+        sync_example_list: SyncExampleListSchema = example_crud.get_sync_example_list(db, limit=limit,
+                                                                                      offset=limit * offset)
         if not sync_example_list.example_list:
             logger.info("No SyncExamples found.")
 
@@ -49,7 +49,7 @@ def get_sync_example_list(db: Session, limit: int = 10, offset: int = 0) -> Sync
 
     except DLException as de:
         logger.error(f"Error in retrieving SyncExamples: {de.detail}")
-        raise BLException("Could not fetch SyncExamples.")
+        raise BLException(code=de.code, detail="Could not fetch SyncExamples.")
     except Exception as e:
         logger.error(f"Unexpected error while fetching SyncExamples: {str(e)}")
         raise BLException("An unexpected error occurred while fetching SyncExamples.")

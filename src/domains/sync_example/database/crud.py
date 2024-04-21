@@ -71,11 +71,11 @@ def get_sync_example_list(db: Session, limit: int = 10, offset: int = 0) -> Sync
 
         return SyncExampleListSchema(
             total=total,
-            examples=example_schema_list
+            example_list=example_schema_list
         )
     except ValidationError as ve:
         logger.error(f"Validation error while creating SyncExampleListSchema: {ve}")
-        raise DLException(detail="Validation error on data input.")
+        raise DLException(code="D0002", detail="Validation error on data input.")
 
     except SQLAlchemyError as e:
         db.rollback()

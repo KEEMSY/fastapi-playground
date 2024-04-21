@@ -22,7 +22,7 @@ def read_sync_example_list(db: Session = Depends(get_db), limit: int = 10, offse
 
     return SyncExampleListResponse(
         total=sync_example_list_schema.total,
-        examples=sync_example_list_schema.example_list
+        example_list=sync_example_list_schema.example_list
     )
 
 
