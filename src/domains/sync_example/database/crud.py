@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
@@ -84,3 +85,32 @@ def get_sync_example_list(db: Session, limit: int = 10, offset: int = 0) -> Sync
     except Exception as e:
         logger.error(f"Database error during retrieving SyncExamples: {str(e)}")
         raise DLException(detail="Failed to retrieve SyncExample list.")
+
+
+def update_sync_example(db: Session, example_id: int, request):
+    try:
+        target_example = db.query(SyncExample).get(example_id)
+        if target_example is None:
+            raise DLException(detail="SyncExample not found")
+
+        target_example.name = request.name
+        target_example.description = request.description
+        target_example.modify_date = datetime.now()
+        db.commit()
+        db.refresh(target_example)
+
+        return SyncExampleSchema.model_validate(target_example)
+
+    except ValidationError as ve:
+        logger.error(f"Validation error while updating SyncExample: {ve}")
+        raise DLException(detail="Validation error on data input.")
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error while updating SyncExample: {e}")
+        raise DLException(detail="Database error occurred while updating SyncExample.")
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected error while updating SyncExample: {e}")
+        raise DLException(detail="An unexpected error occurred while updating SyncExample.")

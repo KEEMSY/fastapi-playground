@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from src.domains.sync_example.bussiness.schemas import SyncExampleSchema, SyncExampleListSchema
 from src.domains.sync_example.database import crud as example_crud
-from src.domains.sync_example.presentation.schemas import CreateSyncExample
+from src.domains.sync_example.presentation.schemas import CreateSyncExample, UpdateSyncExampleV2, UpdateSyncExampleV1
 from src.exceptions import BLException, DLException
 
 logger = logging.getLogger(__name__)
@@ -53,3 +53,36 @@ def get_sync_example_list(db: Session, limit: int = 10, offset: int = 0) -> Sync
     except Exception as e:
         logger.error(f"Unexpected error while fetching SyncExamples: {str(e)}")
         raise BLException("An unexpected error occurred while fetching SyncExamples.")
+
+
+def update_sync_example_v1(db: Session, example_id: int, request: UpdateSyncExampleV1) -> SyncExampleSchema:
+    try:
+        updated_sync_example = example_crud.update_sync_example(db, example_id, request)
+        logger.info(f"Successfully updated SyncExample with ID {example_id}")
+
+        return updated_sync_example
+
+    except DLException as de:
+        logger.error(f"Failed to update SyncExample: {de.detail}")
+        raise BLException(de.detail)
+
+    except Exception as e:
+        logger.error(f"Unexpected error while updating SyncExample: {str(e)}")
+        raise BLException("An unexpected error occurred during the update process")
+
+
+def update_sync_example_v2(db: Session, request: UpdateSyncExampleV2) -> SyncExampleSchema:
+    try:
+        example_id = request.sync_example_id
+        updated_sync_example = example_crud.update_sync_example(db, example_id, request)
+        logger.info(f"Successfully updated SyncExample with ID {example_id}")
+
+        return updated_sync_example
+
+    except DLException as de:
+        logger.error(f"Failed to update SyncExample: {de.detail}")
+        raise BLException(de.detail)
+
+    except Exception as e:
+        logger.error(f"Unexpected error while updating SyncExample: {str(e)}")
+        raise BLException("An unexpected error occurred during the update process")

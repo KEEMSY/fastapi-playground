@@ -29,3 +29,11 @@ class SyncExampleListResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UpdateSyncExampleV1(CreateSyncExample):
+    pass
+
+
+class UpdateSyncExampleV2(CreateSyncExample):
+    sync_example_id: int

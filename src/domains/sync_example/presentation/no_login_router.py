@@ -8,7 +8,7 @@ from src.database import get_db
 from src.domains.sync_example.bussiness import service as example_service
 from src.domains.sync_example.bussiness.schemas import SyncExampleSchema, SyncExampleListSchema
 from src.domains.sync_example.presentation.schemas import SyncExampleResponse, CreateSyncExample, \
-    SyncExampleListResponse
+    SyncExampleListResponse, UpdateSyncExampleV1, UpdateSyncExampleV2
 
 router = APIRouter(
     prefix="/api/sync/no-login",
@@ -43,4 +43,30 @@ def create_sync_example(request: CreateSyncExample, db: Session = Depends(get_db
         return SyncExampleResponse.model_validate(saved_sync_example)
 
     except SQLAlchemyError as e:  # BL 내 에러로 변경 해야 함
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/sync/example/{example_id}", response_model=SyncExampleResponse, tags=["with_no_login_sync_example"])
+def update_sync_example(example_id: int, request: UpdateSyncExampleV1, db: Session = Depends(get_db)):
+    """
+    Update V1: Path parameter로 example_id를 받아서 해당 Example을 업데이트 한다.
+    """
+    try:
+        updated_sync_example = example_service.update_sync_example_v1(db=db, example_id=example_id, request=request)
+        return SyncExampleResponse.model_validate(updated_sync_example)
+
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/sync/example", response_model=SyncExampleResponse, tags=["with_no_login_sync_example"])
+def update_sync_example(request: UpdateSyncExampleV2, db: Session = Depends(get_db)):
+    """
+    Update V2: Body parameter로 example_id를 받아서 해당 Example을 업데이트 한다.
+    """
+    try:
+        updated_sync_example = example_service.update_sync_example_v2(db=db, request=request)
+        return SyncExampleResponse.model_validate(updated_sync_example)
+
+    except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
