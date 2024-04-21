@@ -86,3 +86,17 @@ def update_sync_example_v2(db: Session, request: UpdateSyncExampleV2) -> SyncExa
     except Exception as e:
         logger.error(f"Unexpected error while updating SyncExample: {str(e)}")
         raise BLException("An unexpected error occurred during the update process")
+
+
+def delete_sync_example(db, example_id: int):
+    try:
+        example_crud.delete_sync_example(db, example_id)
+        logger.info(f"Successfully deleted SyncExample with ID {example_id}")
+
+    except DLException as de:
+        logger.error(f"Failed to delete SyncExample: {de.detail}")
+        raise BLException(code=de.code, detail=de.detail)
+
+    except Exception as e:
+        logger.error(f"Unexpected error while deleting SyncExample: {str(e)}")
+        raise BLException("An unexpected error occurred during the deletion process")

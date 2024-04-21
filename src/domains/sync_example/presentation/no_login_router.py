@@ -70,3 +70,12 @@ def update_sync_example(request: UpdateSyncExampleV2, db: Session = Depends(get_
 
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/sync/example/{example_id}", status_code=status.HTTP_204_NO_CONTENT,
+               tags=["with_no_login_sync_example"])
+def delete_sync_example(example_id: int, db: Session = Depends(get_db)):
+    try:
+        example_service.delete_sync_example(db, example_id)
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))

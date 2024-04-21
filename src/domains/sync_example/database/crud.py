@@ -115,3 +115,24 @@ def update_sync_example(db: Session, example_id: int, request):
         db.rollback()
         logger.error(f"Unexpected error while updating SyncExample: {e}")
         raise DLException(detail="An unexpected error occurred while updating SyncExample.")
+
+
+def delete_sync_example(db, example_id: int):
+    target_example = db.query(SyncExample).get(example_id)
+    if target_example is None:
+        raise DLException(code="D0001", detail="SyncExample not found")
+
+    try:
+        db.delete(target_example)
+        db.commit()
+        logger.info(f"Deleted SyncExample with ID {example_id}")
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error while deleting SyncExample: {e}")
+        raise DLException(detail="Database error occurred while deleting SyncExample.")
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected error while deleting SyncExample: {e}")
+        raise DLException(detail="An unexpected error occurred while deleting SyncExample.")
