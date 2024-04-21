@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
+from src.domains.sync_example.presentation import no_login_router as sync_example_router_v1
 from src.domains.question import router as question_router
 from src.domains.answer import router as answer_router
 from src.domains.user import router as user_router
@@ -20,7 +21,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(sync_example_router_v1.router)
 app.include_router(question_router.router)
 app.include_router(answer_router.router)
 app.include_router(user_router.router)
