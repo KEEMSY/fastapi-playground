@@ -1,8 +1,10 @@
 import logging
 
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.domains.async_example.business.schemas import AsyncExampleSchema
 from src.domains.async_example.database.models import AsyncExample
@@ -38,3 +40,45 @@ async def create_async_example_with_no_user(db: AsyncSession, example_create: Cr
         await db.rollback()
         logger.error(f"Unexpected error while creating SyncExample: {e}")
         raise DLException(detail="An unexpected error occurred while creating SyncExample.")
+
+
+async def read_async_example(db: AsyncSession, async_example_id: int) -> AsyncExampleSchema:
+    """
+    단순한 조회로, 특정 ID에 대한 직접 조회만 수행한다. 만약 연관관계가 있는 경우 다른 방법(read_fetch_async_example_with_user)을 사용한다.
+    """
+    result = await db.get(AsyncExample, async_example_id)
+    if result is None:
+        logger.error(f"No AsyncExample found with id {async_example_id}")
+        raise DLException(detail=f"No AsyncExample found with id {async_example_id}")
+
+    try:
+        result_into_schema = AsyncExampleSchema.model_validate(result)
+        logger.info(f"Retrieved AsyncExample {async_example_id}")
+        return result_into_schema
+    except Exception as e:
+        logger.error(f"Error while retrieving AsyncExample {async_example_id}")
+        raise DLException(code="D0000", detail=f"Error while retrieving AsyncExample {async_example_id}")
+
+
+async def read_fetch_async_example_with_user(db: AsyncSession, async_example_id: int) -> AsyncExampleSchema:
+    """
+    연관 관계가 있는 경우, 한번에 모두 가져오는 쿼리를 발생시킨다.
+    """
+    try:
+        stmt = (
+            select(AsyncExample)
+            .options(selectinload(AsyncExample.user))
+            .where(AsyncExample.id == async_example_id)
+        )
+        result = await db.execute(stmt)
+        async_example = result.scalars().first()
+
+        if async_example is None:
+            logger.error(f"No AsyncExample found with id {async_example_id}")
+            raise DLException(detail=f"No AsyncExample found with id {async_example_id}")
+
+        return AsyncExampleSchema.model_validate(async_example)
+
+    except Exception as e:
+        logger.error(f"Error while retrieving AsyncExample {async_example_id}: {str(e)}")
+        raise DLException(detail=f"Error while retrieving AsyncExample {async_example_id}")
