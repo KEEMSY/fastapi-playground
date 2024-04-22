@@ -15,4 +15,4 @@ class AsyncExample(Base):
     create_date: Mapped[DateTime] = Column(DateTime, index=True, default=func.now())
     modify_date: Mapped[Optional[DateTime]] = Column(DateTime, index=True, onupdate=func.now())
     user_id: Mapped[int] = Column(Integer, ForeignKey("users.id"), nullable=True)
-    user = relationship("User", backref="example_users")
+    user = relationship("User", backref="async_example_users")
