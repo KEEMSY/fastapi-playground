@@ -4,6 +4,7 @@ from starlette.responses import JSONResponse
 
 from src.domains.sync_example.presentation import no_login_router as sync_example_router_v1, \
     login_router as sync_example_router_v2
+from src.domains.async_example.presentation import no_login_router as async_example_router_v1
 from src.domains.question import router as question_router
 from src.domains.answer import router as answer_router
 from src.domains.user import router as user_router
@@ -24,6 +25,7 @@ app.add_middleware(
 )
 app.include_router(sync_example_router_v1.router)
 app.include_router(sync_example_router_v2.router)
+app.include_router(async_example_router_v1.router)
 app.include_router(question_router.router)
 app.include_router(answer_router.router)
 app.include_router(user_router.router)
