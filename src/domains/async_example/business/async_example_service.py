@@ -74,3 +74,18 @@ async def fetch_async_example_with_user_v2(db: AsyncSession, request: UpdateAsyn
         logger.error(f"Unexpected error while retrieving AsyncExample: {str(e)}")
         raise BLException(code=BLErrorCode.UNKNOWN_ERROR,
                           detail=f"An unexpected error occurred while retrieving AsyncExample: {e}")
+
+
+async def delete_async_example(db, example_id: int):
+    try:
+        await async_example_crud.delete_async_example(db, example_id)
+        logger.info(f"Deleted AsyncExample with ID {example_id}")
+
+    except DLException as de:
+        logger.error(f"Failed to delete AsyncExample: {de.detail}")
+        raise BLException(code=de.code, detail=de.detail)
+
+    except Exception as e:
+        logger.error(f"Unexpected error while deleting AsyncExample: {str(e)}")
+        raise BLException(code=BLErrorCode.UNKNOWN_ERROR,
+                          detail="An unexpected error occurred while deleting AsyncExample.")
