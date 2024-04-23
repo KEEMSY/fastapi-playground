@@ -22,3 +22,12 @@ class AsyncExampleResponse(BaseModel):
     class Config:
         from_attributes = True
         extra = 'forbid'
+
+
+class UpdateAsyncExampleV1(CreateAsyncExample):
+    pass
+
+
+class UpdateAsyncExampleV2(CreateAsyncExample):
+    async_example_id: int
+
