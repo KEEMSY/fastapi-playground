@@ -68,3 +68,14 @@ async def update_async_example(request: UpdateAsyncExampleV1, example_id: int,
 
     except Exception as e:
         raise PLException(status_code=500, detail=str(e))
+
+
+@router.delete("/example/{example_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["with_no_login_async_example"])
+async def delete_async_example(example_id: int, db: AsyncSession = Depends(get_async_db)):
+    try:
+        await async_example_service.delete_async_example(db, example_id)
+    except BLException as e:
+        raise PLException(status_code=400, detail=e.detail, code=e.code)
+
+    except Exception as e:
+        raise PLException(status_code=500, detail=str(e))
