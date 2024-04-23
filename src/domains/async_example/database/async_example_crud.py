@@ -1,4 +1,5 @@
 import logging
+from typing import Union
 
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -7,8 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.domains.async_example.business.schemas import AsyncExampleSchema
+from src.domains.async_example.constants import DLErrorCode
 from src.domains.async_example.database.models import AsyncExample
-from src.domains.async_example.presentation.schemas import CreateAsyncExample
+from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV1, \
+    UpdateAsyncExampleV2
 from src.exceptions import DLException
 
 logger = logging.getLogger(__name__)
@@ -82,3 +85,35 @@ async def read_fetch_async_example_with_user(db: AsyncSession, async_example_id:
     except Exception as e:
         logger.error(f"Error while retrieving AsyncExample {async_example_id}: {str(e)}")
         raise DLException(detail=f"Error while retrieving AsyncExample {async_example_id}")
+
+
+async def update_async_example(db: AsyncSession, async_example_id: int,
+                               request: Union[UpdateAsyncExampleV1, UpdateAsyncExampleV2]) -> AsyncExampleSchema:
+    try:
+        async_example = await db.get(AsyncExample, async_example_id)
+        if async_example is None:
+            logger.error(f"No AsyncExample found with id {async_example_id}")
+            raise DLException(code=DLErrorCode.NOT_FOUND, detail=f"No AsyncExample found with id {async_example_id}")
+
+        async_example.name = request.name
+        async_example.description = request.description
+        await db.commit()
+        await db.refresh(async_example)
+
+        return AsyncExampleSchema.model_validate(async_example)
+
+    except ValidationError as ve:
+        logger.error(f"Validation error while updating SyncExample: {ve}")
+        await db.rollback()
+        raise DLException(code=DLErrorCode.VALIDATION_ERROR, detail="Validation error on data input.")
+
+    except SQLAlchemyError as e:
+        await db.rollback()
+        logger.error(f"Database error while updating SyncExample: {e}")
+        raise DLException(code=DLErrorCode.DATABASE_ERROR, detail="Database error occurred while updating SyncExample.")
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Unexpected error while updating SyncExample: {e}")
+        raise DLException(code=DLErrorCode.UNKNOWN_ERROR,
+                          detail="An unexpected error occurred while updating SyncExample.")
