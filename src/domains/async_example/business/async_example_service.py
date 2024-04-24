@@ -2,7 +2,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.domains.async_example.business.schemas import AsyncExampleSchema
+from src.domains.async_example.business.schemas import AsyncExampleSchema, ASyncExampleSchemaList
 from src.domains.async_example.constants import BLErrorCode
 from src.domains.async_example.database import async_example_crud
 from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV1, \
@@ -40,6 +40,23 @@ async def read_async_example(db: AsyncSession, async_example_id: int) -> AsyncEx
     except Exception as e:
         logger.error(f"Unexpected error while retrieving AsyncExample: {str(e)}")
         raise BLException(detail="An unexpected error occurred while retrieving AsyncExample")
+
+
+async def get_async_example_list(db: AsyncSession, keyword: str, limit: int = 10,
+                                 offset: int = 0) -> ASyncExampleSchemaList:
+    try:
+        async_example_list: ASyncExampleSchemaList \
+            = await async_example_crud.read_async_example_list(db, limit=limit, offset=offset, keyword=keyword)
+    except DLException as de:
+        logger.error(f"Error in retrieving AsyncExamples: {de.detail}")
+        raise BLException(code=de.code, detail=de.detail)
+
+    except Exception as e:
+        logger.error(f"Unexpected error while fetching AsyncExamples: {e}")
+        raise BLException(code=BLErrorCode.UNKNOWN_ERROR,
+                          detail=f"An unexpected error occurred while fetching AsyncExamples.: {e}")
+
+    return async_example_list
 
 
 async def fetch_async_example_with_user_v1(db: AsyncSession, async_example_id: int,

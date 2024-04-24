@@ -17,3 +17,12 @@ class AsyncExampleSchema(BaseModel):
     class Config:
         from_attributes = True
         extra = 'forbid'
+
+
+class ASyncExampleSchemaList(BaseModel):
+    total: int
+    example_list: list[AsyncExampleSchema] = []
+
+    class Config:
+        from_attributes = True
+        extra = 'forbid'
