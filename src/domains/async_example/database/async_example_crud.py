@@ -2,7 +2,7 @@ import logging
 from typing import Union
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, or_, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -11,7 +11,7 @@ from src.domains.async_example.business.schemas import AsyncExampleSchema
 from src.domains.async_example.constants import DLErrorCode
 from src.domains.async_example.database.models import AsyncExample
 from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV1, \
-    UpdateAsyncExampleV2
+    UpdateAsyncExampleV2, ASyncExampleListSchema
 from src.exceptions import DLException
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,49 @@ async def read_async_example(db: AsyncSession, async_example_id: int) -> AsyncEx
     except Exception as e:
         logger.error(f"Error while retrieving AsyncExample {async_example_id}")
         raise DLException(code="D0000", detail=f"Error while retrieving AsyncExample {async_example_id}")
+
+
+async def read_async_example_list(db, limit, offset, keyword):
+    try:
+        query = select(AsyncExample).where(
+            or_(
+                AsyncExample.name.ilike(f'%{keyword}%'),
+                AsyncExample.description.ilike(f'%{keyword}%')
+            )
+        ).order_by(AsyncExample.create_date.desc())
+
+        results = await db.execute(query.offset(offset).limit(limit))
+        async_example_list = results.scalars().all()
+        async_example_schema_list = [AsyncExampleSchema.model_validate(async_example) for async_example in
+                                     async_example_list]
+
+        total_count = await db.execute(
+            select(func.count()).select_from(
+                select(AsyncExample).where(
+                    or_(
+                        AsyncExample.name.ilike(f'%{keyword}%'),
+                        AsyncExample.description.ilike(f'%{keyword}%')
+                    )
+                ).subquery()
+            )
+        )
+        total = total_count.scalar_one()
+
+        return ASyncExampleListSchema(total=total, example_list=async_example_schema_list)
+
+    except ValidationError as ve:
+        logger.error(f"Validation error while retrieving SyncExample: {ve}")
+        raise DLException(code=DLErrorCode.VALIDATION_ERROR, detail="Validation error on data input.")
+
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while retrieving SyncExample: {e}")
+        raise DLException(code=DLErrorCode.DATABASE_ERROR,
+                          detail="Database error occurred while retrieving SyncExample.")
+
+    except Exception as e:
+        logger.error(f"Unexpected error while retrieving SyncExample: {e}")
+        raise DLException(code=DLErrorCode.UNKNOWN_ERROR,
+                          detail="An unexpected error occurred while retrieving SyncExample.")
 
 
 async def read_fetch_async_example_with_user(db: AsyncSession, async_example_id: int) -> AsyncExampleSchema:
