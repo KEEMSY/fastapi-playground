@@ -7,11 +7,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.domains.async_example.business.schemas import AsyncExampleSchema
+from src.domains.async_example.business.schemas import AsyncExampleSchema, ASyncExampleSchemaList
 from src.domains.async_example.constants import DLErrorCode
 from src.domains.async_example.database.models import AsyncExample
 from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV1, \
-    UpdateAsyncExampleV2, ASyncExampleListSchema
+    UpdateAsyncExampleV2
 from src.exceptions import DLException
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ async def read_async_example_list(db, limit, offset, keyword):
         )
         total = total_count.scalar_one()
 
-        return ASyncExampleListSchema(total=total, example_list=async_example_schema_list)
+        return ASyncExampleSchemaList(total=total, example_list=async_example_schema_list)
 
     except ValidationError as ve:
         logger.error(f"Validation error while retrieving SyncExample: {ve}")
