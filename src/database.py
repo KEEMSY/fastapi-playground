@@ -1,4 +1,9 @@
+import asyncio
+import logging
+import time
+
 from sqlalchemy import create_engine, MetaData
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -39,18 +44,37 @@ MYSQL_INDEXES_NAMING_CONVENTION = {
 metadata = MetaData(naming_convention=MYSQL_INDEXES_NAMING_CONVENTION)
 Base = declarative_base(metadata=metadata)
 
+logger = logging.getLogger(__name__)
 
 async def get_async_db():
-    db = AsyncSession(bind=async_engine)
-    try:
-        yield db
-    finally:
-        await db.close()
+    retry_count = 0
+    while retry_count <= 5:
+        async with AsyncSession(bind=async_engine) as db:
+            try:
+                yield db
+                break  # If the session was successful, exit the loop
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Async database error: {e}, retrying...")
+                await asyncio.sleep(1.5)  # Wait before retrying
+                retry_count += 1
+    if retry_count > 5:
+        logger.error("Maximum retry attempts reached, failing.")
 
 
 def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    retry_count = 0
+    while retry_count <= 5:
+        db = SessionLocal()
+        try:
+            yield db
+            break  # If the session was successful, exit the loop
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Database error: {e}, retrying...")
+            time.sleep(1.5)  # Wait before retrying
+            retry_count += 1
+        finally:
+            db.close()
+    if retry_count > 5:
+        logger.error("Maximum retry attempts reached, failing.")
