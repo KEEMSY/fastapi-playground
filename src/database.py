@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+from config import SYNC_SQLALCHEMY_DATABASE_URL, ASYNC_SQLALCHEMY_DATABASE_URL
+
 """
 create_engine, sessionmaker 등을 사용하는것은 SQLAlchemy 데이터베이스를 사용하기 위해 따라야 할 규칙이다.
 
@@ -24,14 +26,10 @@ create_engine, sessionmaker 등을 사용하는것은 SQLAlchemy 데이터베이
   commit이 필요없는 것처럼 rollback도 동작하지 않는다.
 """
 
-SYNC_SQLALCHEMY_DATABASE_URL = (
-    "mysql+pymysql://root:test@localhost:13306/fastapi_playground"
-)
 engine = create_engine(SYNC_SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-ASYNC_SQLALCHEMY_DATABASE_URL = "mysql+asyncmy://root:test@localhost:13306/fastapi_playground"
 async_engine = create_async_engine(ASYNC_SQLALCHEMY_DATABASE_URL, echo=True)
 
 MYSQL_INDEXES_NAMING_CONVENTION = {
