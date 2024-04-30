@@ -24,7 +24,7 @@ if config.config_file_name is not None:
 
 if not config.get_main_option("sqlalchemy.url"):
     config.set_main_option("sqlalchemy.url", "mysql+pymysql://{username}:{password}@{host}:{port}/{db_name}".format(
-        username="root", password="test", host="localhost", port="13306", db_name="fastapi_playground"
+        username="root", password="test", host="db", port="3306", db_name="fastapi_playground"
     ))
 
 # add your model's MetaData object here

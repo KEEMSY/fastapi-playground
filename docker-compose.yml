@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: test  # Set the root password here
+      MYSQL_DATABASE: fastapi_playground  # Optional: Define a database to be created
+      MYSQL_USER: fastapi_user  # Define a regular user (not root)
+      MYSQL_PASSWORD: test  # Set password for the regular user
+    ports:
+      - "13306:3306"
+    networks:
+      - fastapi_network
+
+  fastapi-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "7777:8000"
+    environment:
+      SYNC_SQLALCHEMY_DATABASE_URL: "mysql+pymysql://root:test@db:3306/fastapi_playground"
+      ASYNC_SQLALCHEMY_DATABASE_URL: "mysql+asyncmy://root:test@db:3306/fastapi_playground"
+    depends_on:
+      - db
+    networks:
+      - fastapi_network
+
+networks:
+  fastapi_network:
+
+volumes:
+  mysql_data:
