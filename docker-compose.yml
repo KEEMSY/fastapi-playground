@@ -15,10 +15,12 @@ services:
     networks:
       - fastapi_network
 
-  fastapi-app:
+  playground:
     build:
       context: .
       dockerfile: Dockerfile
+    volumes:
+      - .:/src
     ports:
       - "7777:8000"
     environment:
@@ -26,6 +28,7 @@ services:
       ASYNC_SQLALCHEMY_DATABASE_URL: "mysql+asyncmy://root:test@db:3306/fastapi_playground"
     depends_on:
       - db
+    restart: on-failure
     networks:
       - fastapi_network
 

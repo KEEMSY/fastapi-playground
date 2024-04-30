@@ -10,8 +10,8 @@ docker-compose up -d
 
 # FastAPI 앱이 실행되면, http://localhost:7777/docs 에서 API 문서를 확인할 수 있다.
 
-#2. fastapi-playground-fastapi-app-1 컨테이너에 접속한다.
-docker exec -it fastapi-playground-fastapi-app-1 bash
+#2. fastapi-playground-playground-1 컨테이너에 접속한다.
+docker exec -it fastapi-playground-playground-1 bash
 
 # 컨테이너에 접속하여, alembic 파일을 지우고, 새로운 alembic 파일을 생성한다.(개선 필요)
 rm -rf alembic
