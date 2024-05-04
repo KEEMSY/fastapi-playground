@@ -144,7 +144,7 @@ async def update_async_example(db: AsyncSession, async_example_id: int,
         async_example = await db.get(AsyncExample, async_example_id)
         if async_example is None:
             logger.error(f"No AsyncExample found with id {async_example_id}")
-            raise DLException(code=DLErrorCode.NOT_FOUND, detail=f"No AsyncExample found with id {async_example_id}")
+            raise DLException(code=ErrorCode.NOT_FOUND, detail=f"No AsyncExample found with id {async_example_id}")
 
         async_example.name = request.name
         async_example.description = request.description
@@ -153,20 +153,24 @@ async def update_async_example(db: AsyncSession, async_example_id: int,
 
         return AsyncExampleSchema.model_validate(async_example)
 
+    except DLException as de:
+        logger.error(f"Failed to update AsyncExample: {de.detail}")
+        raise
+
     except ValidationError as ve:
         logger.error(f"Validation error while updating SyncExample: {ve}")
         await db.rollback()
-        raise DLException(code=DLErrorCode.VALIDATION_ERROR, detail="Validation error on data input.")
+        raise DLException(code=ErrorCode.VALIDATION_ERROR, detail="Validation error on data input.")
 
     except SQLAlchemyError as e:
         await db.rollback()
         logger.error(f"Database error while updating SyncExample: {e}")
-        raise DLException(code=DLErrorCode.DATABASE_ERROR, detail="Database error occurred while updating SyncExample.")
+        raise DLException(code=ErrorCode.DATABASE_ERROR, detail="Database error occurred while updating SyncExample.")
 
     except Exception as e:
         await db.rollback()
         logger.error(f"Unexpected error while updating SyncExample: {e}")
-        raise DLException(code=DLErrorCode.UNKNOWN_ERROR,
+        raise DLException(code=ErrorCode.UNKNOWN_ERROR,
                           detail="An unexpected error occurred while updating SyncExample.")
 
 
