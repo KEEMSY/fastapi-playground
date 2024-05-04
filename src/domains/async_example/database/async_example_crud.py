@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.domains.async_example.business.schemas import AsyncExampleSchema, ASyncExampleSchemaList
-from src.domains.async_example.constants import DLErrorCode
+from src.domains.async_example.constants import DLErrorCode, ErrorCode
 from src.domains.async_example.database.models import AsyncExample
 from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV1, \
     UpdateAsyncExampleV2
@@ -125,9 +125,13 @@ async def read_fetch_async_example_with_user(db: AsyncSession, async_example_id:
 
         if async_example is None:
             logger.error(f"No AsyncExample found with id {async_example_id}")
-            raise DLException(detail=f"No AsyncExample found with id {async_example_id}")
+            raise DLException(code=ErrorCode.NOT_FOUND, detail=f"No AsyncExample found with id {async_example_id}")
 
         return AsyncExampleSchema.model_validate(async_example)
+
+    except DLException as de:
+        logger.error(f"Failed to retrieve AsyncExample {async_example_id}: {de.detail}")
+        raise DLException(code=de.code, detail=de.detail)
 
     except Exception as e:
         logger.error(f"Error while retrieving AsyncExample {async_example_id}: {str(e)}")
