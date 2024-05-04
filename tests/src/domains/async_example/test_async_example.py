@@ -40,3 +40,22 @@ async def test_async_example_단일_조회_실패(async_client):
     assert res.json()["code"] == ErrorCode.NOT_FOUND
 
 
+@pytest.mark.asyncio
+async def test_async_example_수정(async_client):
+    res = await async_client.post("/api/async/no-login/example", json={"name": "test1", "description": "test"})
+    new_async_example = AsyncExampleResponse(**res.json())
+
+    res = await async_client.put(f"/api/async/no-login/example", json={"name": "test2", "description": "test",
+                                                                       "async_example_id": new_async_example.id})
+    updated_async_example = AsyncExampleResponse(**res.json())
+
+    assert res.status_code == 200
+    assert updated_async_example.name == "test2"
+
+
+@pytest.mark.asyncio
+async def test_async_example_수정_실패_NOT_FOUND(async_client):
+    res = await async_client.put("/api/async/no-login/example", json={"name": "test2", "description": "test",
+                                                                      "async_example_id": 999999})
+    assert res.status_code == 404
+    assert res.json()["code"] == ErrorCode.NOT_FOUND

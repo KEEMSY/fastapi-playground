@@ -7,6 +7,7 @@ from starlette import status
 from src.database import get_async_db
 from src.domains.async_example.business import async_example_service
 from src.domains.async_example.business.schemas import ASyncExampleSchemaList
+from src.domains.async_example.constants import ErrorCode
 from src.domains.async_example.presentation.schemas import CreateAsyncExample, AsyncExampleResponse, \
     UpdateAsyncExampleV2, UpdateAsyncExampleV1, ReadAsyncExample, ASyncExampleListResponse
 from src.exceptions import PLException, BLException
@@ -52,13 +53,16 @@ async def get_async_example(example_id: int, db: AsyncSession = Depends(get_asyn
         async_example = await async_example_service.read_async_example(db, example_id)
         return AsyncExampleResponse.model_validate(async_example)
     except BLException as e:
+        if e.code == ErrorCode.NOT_FOUND:
+            raise PLException(status_code=404, detail=e.detail, code=e.code)
+
         raise PLException(status_code=400, detail=e.detail, code=e.code)
 
     except Exception as e:
         raise PLException(status_code=500, detail=str(e))
 
 
-@router.put("/example/fetch/", response_model=AsyncExampleResponse, status_code=status.HTTP_200_OK,
+@router.put("/example", response_model=AsyncExampleResponse, status_code=status.HTTP_200_OK,
             tags=["with_no_login_async_example"])
 async def update_async_example(request: UpdateAsyncExampleV2,
                                db: AsyncSession = Depends(get_async_db)):
@@ -66,6 +70,9 @@ async def update_async_example(request: UpdateAsyncExampleV2,
         updated_async_example = await async_example_service.fetch_async_example_with_user_v2(db, request)
         return AsyncExampleResponse.model_validate(updated_async_example)
     except BLException as e:
+        if e.code == ErrorCode.NOT_FOUND:
+            raise PLException(status_code=404, detail=e.detail, code=e.code)
+
         raise PLException(status_code=400, detail=e.detail, code=e.code)
 
     except Exception as e:
