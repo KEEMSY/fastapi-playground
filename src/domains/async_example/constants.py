@@ -1,6 +1,14 @@
 from enum import Enum
 
 
+class ErrorCode(str, Enum):
+    UNKNOWN_ERROR = "0000"
+    NOT_FOUND = "0001"
+    VALIDATION_ERROR = "0002"
+    DUPLICATE_ERROR = "0003"
+    CONSTRAINT_ERROR = "0004"
+
+
 class BLErrorCode(str, Enum):
     UNKNOWN_ERROR = "B0000"
     UNAUTHORIZED = "B0001"
