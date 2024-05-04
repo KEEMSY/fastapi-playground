@@ -7,6 +7,7 @@ class ErrorCode(str, Enum):
     VALIDATION_ERROR = "0002"
     DUPLICATE_ERROR = "0003"
     CONSTRAINT_ERROR = "0004"
+    DATABASE_ERROR = "0005"
 
 
 class BLErrorCode(str, Enum):
