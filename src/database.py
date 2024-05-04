@@ -26,12 +26,6 @@ create_engine, sessionmaker 등을 사용하는것은 SQLAlchemy 데이터베이
   commit이 필요없는 것처럼 rollback도 동작하지 않는다.
 """
 
-engine = create_engine(SYNC_SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-async_engine = create_async_engine(ASYNC_SQLALCHEMY_DATABASE_URL, echo=True)
-
 MYSQL_INDEXES_NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",
@@ -43,6 +37,10 @@ metadata = MetaData(naming_convention=MYSQL_INDEXES_NAMING_CONVENTION)
 Base = declarative_base(metadata=metadata)
 
 logger = logging.getLogger(__name__)
+
+# async_engine = create_async_engine(ASYNC_SQLALCHEMY_DATABASE_URL, echo=True)
+async_engine = create_async_engine(ASYNC_SQLALCHEMY_DATABASE_URL)
+
 
 async def get_async_db():
     retry_count = 0
@@ -58,6 +56,10 @@ async def get_async_db():
                 retry_count += 1
     if retry_count > 5:
         logger.error("Maximum retry attempts reached, failing.")
+
+
+engine = create_engine(SYNC_SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db():
