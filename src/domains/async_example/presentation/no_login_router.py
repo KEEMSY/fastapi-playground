@@ -100,6 +100,9 @@ async def delete_async_example(example_id: int, db: AsyncSession = Depends(get_a
     try:
         await async_example_service.delete_async_example(db, example_id)
     except BLException as e:
+        if e.code == ErrorCode.NOT_FOUND:
+            raise PLException(status_code=404, detail=e.detail, code=e.code)
+
         raise PLException(status_code=400, detail=e.detail, code=e.code)
 
     except Exception as e:
