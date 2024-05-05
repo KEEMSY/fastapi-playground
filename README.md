@@ -5,21 +5,10 @@
 ### docker-compose.yml
 
 ```SHELL
-#1. docker-compose.yml 파일을 사용하여 FastAPI 앱을 실행한다.
+# docker-compose.yml 파일을 사용하여 FastAPI 앱을 실행한다.
 docker-compose up -d
-
-# FastAPI 앱이 실행되면, http://localhost:7777/docs 에서 API 문서를 확인할 수 있다.
-
-#2. fastapi-playground-playground-1 컨테이너에 접속한다.
-docker exec -it fastapi-playground-playground-1 bash
-
-# 컨테이너에 접속하여, alembic 파일을 지우고, 새로운 alembic 파일을 생성한다.(개선 필요)
-rm -rf alembic
-alembic init alembic
-alembic revision --autogenerate -m "init"
-alembic upgrade head
 ```
-
+- FastAPI 앱이 실행되면, http://localhost:7777/docs 에서 API 문서를 확인할 수 있다.
 
 ## 1. 구조
 

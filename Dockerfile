@@ -16,6 +16,11 @@ RUN pip install -U pip && \
 COPY . /src
 ENV PATH "$PATH:/src/scripts"
 
+# DB setup
+RUN alembic init alembic
+RUN alembic revision --autogenerate -m "init"
+RUN alembic upgrade head
+
 RUN useradd -m -d /src -s /bin/bash app \
     && chown -R app:app /src/* && chmod +x /src/scripts/*
 
