@@ -17,8 +17,11 @@ router = APIRouter(
 )
 
 
-@router.post("/example", response_model=AsyncExampleResponse, status_code=status.HTTP_201_CREATED,
-             tags=["with_no_login_async_example"])
+@router.post("/example",
+             response_model=AsyncExampleResponse,
+             status_code=status.HTTP_201_CREATED,
+             tags=["with_no_login_async_example"],
+             summary="AsyncExample 생성")
 async def save_async_example(request: CreateAsyncExample, db: AsyncSession = Depends(get_async_db)):
     try:
         saved_async_example = await async_example_service.create_async_example_with_no_user(
@@ -32,13 +35,19 @@ async def save_async_example(request: CreateAsyncExample, db: AsyncSession = Dep
         raise PLException(status_code=500, detail=str(e))
 
 
-@router.get("/example/list", response_model=ASyncExampleListResponse, tags=["with_no_login_async_example"])
+@router.get("/example/list",
+            response_model=ASyncExampleListResponse,
+            status_code=status.HTTP_200_OK,
+            tags=["with_no_login_async_example"],
+            summary="AsyncExample 리스트 조회")
 async def get_async_example_list(keyword: Optional[str] = None, size: int = 10, page: int = 0,
                                  db: AsyncSession = Depends(get_async_db)):
     try:
         offset = size * page
-        async_example_schema_list: ASyncExampleSchemaList = await async_example_service.get_async_example_list(db=db, keyword=keyword,
-                                                                                limit=size, offset=offset)
+        async_example_schema_list: ASyncExampleSchemaList = await async_example_service.get_async_example_list(db=db,
+                                                                                                               keyword=keyword,
+                                                                                                               limit=size,
+                                                                                                               offset=offset)
         return ASyncExampleListResponse.model_validate(async_example_schema_list)
     except BLException as e:
         raise PLException(status_code=400, detail=e.detail, code=e.code)
@@ -47,7 +56,11 @@ async def get_async_example_list(keyword: Optional[str] = None, size: int = 10, 
         raise PLException(status_code=500, detail=str(e))
 
 
-@router.get("/example/{example_id}", response_model=AsyncExampleResponse, tags=["with_no_login_async_example"])
+@router.get("/example/{example_id}",
+            response_model=AsyncExampleResponse,
+            status_code=status.HTTP_200_OK,
+            tags=["with_no_login_async_example"],
+            summary="AsyncExample 단일 조회")
 async def get_async_example(example_id: int, db: AsyncSession = Depends(get_async_db)):
     try:
         async_example = await async_example_service.read_async_example(db, example_id)
@@ -62,8 +75,11 @@ async def get_async_example(example_id: int, db: AsyncSession = Depends(get_asyn
         raise PLException(status_code=500, detail=str(e))
 
 
-@router.put("/example", response_model=AsyncExampleResponse, status_code=status.HTTP_200_OK,
-            tags=["with_no_login_async_example"])
+@router.put("/example",
+            response_model=AsyncExampleResponse,
+            status_code=status.HTTP_200_OK,
+            tags=["with_no_login_async_example"],
+            summary="AsyncExample 수정: body에 async_example_id를 넣어주세요")
 async def update_async_example(request: UpdateAsyncExampleV2,
                                db: AsyncSession = Depends(get_async_db)):
     try:
@@ -79,8 +95,11 @@ async def update_async_example(request: UpdateAsyncExampleV2,
         raise PLException(status_code=500, detail=str(e))
 
 
-@router.put("/example/fetch/{example_id}", response_model=AsyncExampleResponse, status_code=status.HTTP_200_OK,
-            tags=["with_no_login_async_example"])
+@router.put("/example/fetch/{example_id}",
+            response_model=AsyncExampleResponse,
+            status_code=status.HTTP_200_OK,
+            tags=["with_no_login_async_example"],
+            summary="AsyncExample 수정: path parameter에 async_example_id를 넣어주세요")
 async def update_async_example(request: UpdateAsyncExampleV1, example_id: int,
                                db: AsyncSession = Depends(get_async_db)
                                ):
@@ -95,7 +114,10 @@ async def update_async_example(request: UpdateAsyncExampleV1, example_id: int,
         raise PLException(status_code=500, detail=str(e))
 
 
-@router.delete("/example/{example_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["with_no_login_async_example"])
+@router.delete("/example/{example_id}",
+               status_code=status.HTTP_204_NO_CONTENT,
+               tags=["with_no_login_async_example"],
+               summary="AsyncExample 삭제")
 async def delete_async_example(example_id: int, db: AsyncSession = Depends(get_async_db)):
     try:
         await async_example_service.delete_async_example(db, example_id)
