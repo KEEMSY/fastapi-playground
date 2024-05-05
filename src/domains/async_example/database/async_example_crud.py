@@ -178,7 +178,7 @@ async def delete_async_example(db: AsyncSession, async_example_id: int):
     async_example = await db.get(AsyncExample, async_example_id)
     if async_example is None:
         logger.error(f"No AsyncExample found with id {async_example_id}")
-        raise DLException(code=DLErrorCode.NOT_FOUND, detail=f"No AsyncExample found with id {async_example_id}")
+        raise DLException(code=ErrorCode.NOT_FOUND, detail=f"No AsyncExample found with id {async_example_id}")
     try:
         await db.delete(async_example)
         await db.commit()
