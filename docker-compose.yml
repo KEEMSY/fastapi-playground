@@ -1,5 +1,23 @@
 version: '3.8'
 services:
+  playground:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/home/fastAPI-Playground
+    ports:
+      - "7777:8000"
+    environment:
+
+      SYNC_SQLALCHEMY_DATABASE_URL: ${SYNC_SQLALCHEMY_DATABASE_URL}
+      ASYNC_SQLALCHEMY_DATABASE_URL: ${ASYNC_SQLALCHEMY_DATABASE_URL}
+    depends_on:
+      - db
+    restart: on-failure
+    networks:
+      - fastapi_network
+
   db:
     image: mysql:8.0
     command: --default-authentication-plugin=mysql_native_password
@@ -12,23 +30,6 @@ services:
       MYSQL_PASSWORD: test  # Set password for the regular user
     ports:
       - "13306:3306"
-    networks:
-      - fastapi_network
-
-  playground:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - .:/src
-    ports:
-      - "7777:8000"
-    environment:
-      SYNC_SQLALCHEMY_DATABASE_URL: "mysql+pymysql://root:test@db:3306/fastapi_playground"
-      ASYNC_SQLALCHEMY_DATABASE_URL: "mysql+asyncmy://root:test@db:3306/fastapi_playground"
-    depends_on:
-      - db
-    restart: on-failure
     networks:
       - fastapi_network
 

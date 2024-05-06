@@ -5,5 +5,5 @@ venv
 pyvenv.cfg
 .pytest_cache
 .ruff_cache
-alembic/
+alembic/versions/*
 logs/
