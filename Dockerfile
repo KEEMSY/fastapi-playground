@@ -13,18 +13,22 @@ COPY requirements.txt requirements.txt
 RUN pip install -U pip && \
     pip install --no-cache -r requirements.txt
 
-COPY . /src
-ENV PATH "$PATH:/src/scripts"
+COPY . /home/fastAPI-Playground
+# Delete contents of alembic/versions if it exists
+RUN if [ -d "/home/fastAPI-Playground/alembic/versions" ]; then \
+        rm -rf /home/fastAPI-Playground/alembic/versions/*; \
+    fi
 
-# DB setup
-RUN alembic init alembic
-RUN alembic revision --autogenerate -m "init"
-RUN alembic upgrade head
 
-RUN useradd -m -d /src -s /bin/bash app \
-    && chown -R app:app /src/* && chmod +x /src/scripts/*
+# Ensure scripts have executable permissions
+RUN chmod +x /home/fastAPI-Playground/scripts/*.sh
 
-WORKDIR /src
+ENV PATH "$PATH:/home/fastAPI-Playground/scripts"
+
+RUN useradd -m -d /home/fastAPI-Playground -s /bin/bash app \
+    && chown -R app:app /home/fastAPI-Playground
+
 USER app
+WORKDIR /home/fastAPI-Playground
 
-CMD ["./scripts/start-dev.sh"]
+CMD ["bash", "./scripts/start-dev.sh"]
