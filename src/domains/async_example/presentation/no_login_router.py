@@ -11,10 +11,13 @@ from src.domains.async_example.constants import ErrorCode
 from src.domains.async_example.presentation.schemas import CreateAsyncExample, AsyncExampleResponse, \
     UpdateAsyncExampleV2, UpdateAsyncExampleV1, ReadAsyncExample, ASyncExampleListResponse
 from src.exceptions import PLException, BLException
+from src.utils import Logging
 
 router = APIRouter(
     prefix="/api/async/no-login",
 )
+
+logger = Logging.__call__().get_logger(name=__name__, path="no_login_router.py", isThread=True)
 
 
 @router.post("/example",
@@ -27,11 +30,14 @@ async def save_async_example(request: CreateAsyncExample, db: AsyncSession = Dep
         saved_async_example = await async_example_service.create_async_example_with_no_user(
             db=db, example_create=request
         )
+        logger.info(f"AsyncExample created: {saved_async_example}")
         return AsyncExampleResponse.model_validate(saved_async_example)
     except BLException as e:
+        logger.error(f"Error creating AsyncExample: {e}")
         raise PLException(status_code=400, detail=e.detail, code=e.code)
 
     except Exception as e:
+        logger.error(f"UnExpected Error is occurred when creating AsyncExample: {e}")
         raise PLException(status_code=500, detail=str(e))
 
 
@@ -48,8 +54,10 @@ async def get_async_example_list(keyword: Optional[str] = None, size: int = 10, 
                                                                                                                keyword=keyword,
                                                                                                                limit=size,
                                                                                                                offset=offset)
+        logger.info(f"AsyncExample list: {async_example_schema_list}")
         return ASyncExampleListResponse.model_validate(async_example_schema_list)
     except BLException as e:
+        logger.error(f"Error getting AsyncExample list: {e}")
         raise PLException(status_code=400, detail=e.detail, code=e.code)
 
     except Exception as e:
@@ -67,11 +75,14 @@ async def get_async_example(example_id: int, db: AsyncSession = Depends(get_asyn
         return AsyncExampleResponse.model_validate(async_example)
     except BLException as e:
         if e.code == ErrorCode.NOT_FOUND:
+            logger.error(f"AsyncExample not found: {e}")
             raise PLException(status_code=404, detail=e.detail, code=e.code)
 
+        logger.error(f"Error getting AsyncExample: {e}")
         raise PLException(status_code=400, detail=e.detail, code=e.code)
 
     except Exception as e:
+        logger.error(f"UnExpected Error is occurred when getting AsyncExample: {e}")
         raise PLException(status_code=500, detail=str(e))
 
 
@@ -87,11 +98,14 @@ async def update_async_example(request: UpdateAsyncExampleV2,
         return AsyncExampleResponse.model_validate(updated_async_example)
     except BLException as e:
         if e.code == ErrorCode.NOT_FOUND:
+            logger.error(f"AsyncExample not found: {e}")
             raise PLException(status_code=404, detail=e.detail, code=e.code)
 
+        logger.error(f"Error updating AsyncExample: {e}")
         raise PLException(status_code=400, detail=e.detail, code=e.code)
 
     except Exception as e:
+        logger.error(f"UnExpected Error is occurred when updating AsyncExample: {e}")
         raise PLException(status_code=500, detail=str(e))
 
 
@@ -99,7 +113,7 @@ async def update_async_example(request: UpdateAsyncExampleV2,
             response_model=AsyncExampleResponse,
             status_code=status.HTTP_200_OK,
             tags=["with_no_login_async_example"],
-            summary="AsyncExample 수정: path parameter에 async_example_id를 넣어주세요")
+            summary="AsyncExample 수정: path parameter에 async_example_id를 넣어주세요(사용하지 않음)")
 async def update_async_example(request: UpdateAsyncExampleV1, example_id: int,
                                db: AsyncSession = Depends(get_async_db)
                                ):
@@ -123,9 +137,12 @@ async def delete_async_example(example_id: int, db: AsyncSession = Depends(get_a
         await async_example_service.delete_async_example(db, example_id)
     except BLException as e:
         if e.code == ErrorCode.NOT_FOUND:
+            logger.error(f"AsyncExample not found: {e}")
             raise PLException(status_code=404, detail=e.detail, code=e.code)
 
+        logger.error(f"Error deleting AsyncExample: {e}")
         raise PLException(status_code=400, detail=e.detail, code=e.code)
 
     except Exception as e:
+        logger.error(f"UnExpected Error is occurred when deleting AsyncExample: {e}")
         raise PLException(status_code=500, detail=str(e))
