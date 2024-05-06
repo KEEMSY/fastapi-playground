@@ -13,7 +13,6 @@ PORT=${PORT:-8000}
 LOG_LEVEL=${LOG_LEVEL:-info}
 LOG_CONFIG=${LOG_CONFIG:-/home/fastAPI-Playground/logging.ini}
 
-alembic revision --autogenerate -m "init"
 alembic upgrade head
 
 # Start Uvicorn with live reload
