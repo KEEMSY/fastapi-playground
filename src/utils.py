@@ -3,6 +3,7 @@ import logging.config
 from datetime import datetime
 
 from config import LOG_FILE_PATH, LOG_FILE_EXT
+from src.domains.async_example.constants import Environment
 
 """
 [ 로깅 표준 방식 ]
@@ -67,35 +68,35 @@ class Logging(object, metaclass=SingletonLogging):
             # logger.setLevel(logging.DEBUG if Environment.is_debug or Environment.is_testing else logging.INFO)
 
             formatter = logging.Formatter(self._format_thread if isThread else self._format_basic)
-            file_path = get_log_path(path if path else name)
+            file_path = self.get_log_path(path if path else name)
             file_handler = logging.FileHandler(file_path)
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
+            self._loggers[name].addHandler(file_handler)
 
         return self._loggers[name]
 
+    def get_log_path(self, path: str) -> str:
+        year = str(datetime.today().year)
+        month = datetime.today().strftime('%m')
+        day = datetime.today().strftime('%d')
 
-def get_log_path(path: str) -> str:
-    year = str(datetime.today().year)
-    month = datetime.today().strftime('%m')
-    day = datetime.today().strftime('%d')
+        rep_path = path.replace('/', '')
+        rep_path = rep_path.replace('\'', '')
 
-    rep_path = path.replace('/', '')
-    rep_path = rep_path.replace('\'', '')
+        # LOG_FILE_PATH / path /
+        result = LOG_FILE_PATH + rep_path + os.path.sep
+        self.make_path(result)
 
-    # LOG_FILE_PATH / path /
-    result = LOG_FILE_PATH + rep_path + os.path.sep
-    make_path(result)
+        # LOG_FILE_PATH / path / 2024_05
+        result = result + year + "_" + month + os.path.sep
+        self.make_path(result)
 
-    # LOG_FILE_PATH / path / 2024_05
-    result = result + year + "_" + month + os.path.sep
-    make_path(result)
+        # LOG_FILE_PATH / path / 2024_05 / 2024_05_06.log
+        result = result + year + "_" + month + "_" + day + LOG_FILE_EXT
+        return result
 
-    # LOG_FILE_PATH / path / 2024_05 / 2024_05_06.log
-    result = result + year + "_" + month + "_" + day + LOG_FILE_EXT
-    return result
-
-
-def make_path(path):
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
+    def make_path(self, path: str, mode=0o755):
+        if not os.path.exists(path):
+            os.mkdir(path)
+            os.chmod(path=path, mode=mode)
