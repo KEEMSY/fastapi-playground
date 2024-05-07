@@ -64,8 +64,13 @@ class Logging(object, metaclass=SingletonLogging):
             logger = logging.getLogger(name)
             self._loggers[name] = logger
 
-            # 개발 환경 별 로깅 레벨을 설정하도록 개선 필요: 개발 환경을 구분하는 작업이 선행 되어야 함.
-            # logger.setLevel(logging.DEBUG if Environment.is_debug or Environment.is_testing else logging.INFO)
+            # Set logging level based on the environment
+            env = Environment(os.getenv('ENVIRONMENT', 'production').upper())
+
+            if env.is_debug:
+                logger.setLevel(logging.DEBUG)
+            else:
+                logger.setLevel(logging.INFO)
 
             formatter = logging.Formatter(self._format_thread if isThread else self._format_basic)
             file_path = self.get_log_path(path if path else name)
