@@ -1,6 +1,25 @@
 from enum import Enum
 
 
+# .env 내 ENVIRONMENT 설정에 따라 환경을 구분한다.
+class Environment(str, Enum):
+    DEVELOPMENT = "DEVELOPMENT"
+    TESTING = "TESTING"
+    PRODUCTION = "PRODUCTION"
+
+    @property
+    def is_debug(self):
+        return self in (self.DEVELOPMENT, self.TESTING)
+
+    @property
+    def is_testing(self):
+        return self == self.TESTING
+
+    @property
+    def is_deployed(self) -> bool:
+        return self in self.PRODUCTION
+
+
 class ErrorCode(str, Enum):
     UNKNOWN_ERROR = "0000"
     NOT_FOUND = "0001"
