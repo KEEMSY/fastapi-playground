@@ -2,16 +2,26 @@ import pytest
 
 from src.domains.async_example.constants import ErrorCode
 from src.domains.async_example.presentation.schemas import AsyncExampleResponse
+from tests.src.domains.async_example.async_example_steps import AsyncExampleSteps
+
 from tests.conftest import async_client, async_session, event_loop
 
 
 @pytest.mark.asyncio
-async def test_async_example_creation(async_client):
-    res = await async_client.post("/api/async/no-login/example", json={"name": "test1", "description": "test"})
-    new_async_example = AsyncExampleResponse(**res.json())
+async def test_async_example_정상_생성(async_client):
+    # given
+    create_async_example = await AsyncExampleSteps.AsyncExample_생성요청(
+        name="test1",
+        description="test"
+    )
 
+    # when
+    res = await async_client.post(url="/api/async/no-login/example", data=create_async_example.model_dump_json())
+    async_example_res = AsyncExampleResponse.model_validate(res.json())
+
+    # then
     assert res.status_code == 201
-    assert new_async_example.name == "test1"
+    assert async_example_res.name == "test1"
 
 
 @pytest.mark.asyncio
@@ -31,7 +41,6 @@ async def test_async_example_단일_조회(async_client):
 
     assert res.status_code == 200
     assert new_async_example == retrieved_async_example
-
 
 @pytest.mark.asyncio
 async def test_async_example_단일_조회_실패(async_client):
