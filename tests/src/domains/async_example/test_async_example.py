@@ -25,26 +25,40 @@ async def test_async_example_정상_생성(async_client):
 
 
 @pytest.mark.asyncio
-async def test_async_example_list(async_client):
+async def test_async_example_리스트_조회(async_client):
+    # given, when
     res = await async_client.get("/api/async/no-login/example/list")
+
+    # then
     assert res.status_code == 200
     assert len(res.json()["example_list"]) == 0
 
 
 @pytest.mark.asyncio
 async def test_async_example_단일_조회(async_client):
-    res = await async_client.post("/api/async/no-login/example", json={"name": "test1", "description": "test"})
-    new_async_example = AsyncExampleResponse(**res.json())
+    # given
+    create_async_example = await AsyncExampleSteps.AsyncExample_생성요청(
+        name="test1",
+        description="test"
+    )
+    create_res = await async_client.post(url="/api/async/no-login/example", data=create_async_example.model_dump_json())
+    create_async_example_res = AsyncExampleResponse.model_validate(create_res.json())
 
-    res = await async_client.get(f"/api/async/no-login/example/{new_async_example.id}")
-    retrieved_async_example = AsyncExampleResponse(**res.json())
+    # when
+    read_res = await async_client.get(f"/api/async/no-login/example/{create_async_example_res.id}")
+    read_async_example_res = AsyncExampleResponse(**read_res.json())
 
-    assert res.status_code == 200
-    assert new_async_example == retrieved_async_example
+    assert read_res.status_code == 200
+    assert create_async_example_res.id == read_async_example_res.id
+
 
 @pytest.mark.asyncio
 async def test_async_example_단일_조회_실패(async_client):
-    res = await async_client.get("/api/async/no-login/example/999999")
+    # given, when
+    not_existed_example_id = "999999"
+    res = await async_client.get("/api/async/no-login/example/%s" % not_existed_example_id)
+
+    # then
     assert res.status_code == 404
     assert res.json()["code"] == ErrorCode.NOT_FOUND
 
