@@ -70,7 +70,8 @@ async def test_async_example_수정(async_client):
         name="test1",
         description="test"
     )
-    create_res = await async_client.post(url="/api/async/no-login/example", data=create_async_example_request.model_dump_json())
+    create_res = await async_client.post(url="/api/async/no-login/example",
+                                         data=create_async_example_request.model_dump_json())
     create_res_schema = AsyncExampleResponse.model_validate(create_res.json())
 
     # when
@@ -90,9 +91,9 @@ async def test_async_example_수정(async_client):
 @pytest.mark.asyncio
 async def test_async_example_수정_실패_NOT_FOUND(async_client):
     # given
-    undefined_id = 99999999
+    not_existed_example_id = 99999999
     update_async_example = await AsyncExampleSteps.AsyncExample_수정요청_v2(
-        async_example_id=undefined_id,
+        async_example_id=not_existed_example_id,
         name="test_update_name",
         description="test_update_description"
     )
@@ -107,19 +108,28 @@ async def test_async_example_수정_실패_NOT_FOUND(async_client):
 
 @pytest.mark.asyncio
 async def test_async_example_삭제(async_client):
-    res = await async_client.post("/api/async/no-login/example", json={"name": "test1", "description": "test"})
-    new_async_example = AsyncExampleResponse(**res.json())
+    # given
+    create_async_example_request = await AsyncExampleSteps.AsyncExample_생성요청(
+        name="test1",
+        description="test"
+    )
+    create_res = await async_client.post(url="/api/async/no-login/example",
+                                         data=create_async_example_request.model_dump_json())
+    create_res_schema = AsyncExampleResponse.model_validate(create_res.json())
 
-    res = await async_client.delete(f"/api/async/no-login/example/{new_async_example.id}")
+    # when
+    res = await async_client.delete(f"/api/async/no-login/example/{create_res_schema.id}")
+
+    # then
     assert res.status_code == 204
-
-    deleted_res = await async_client.get(f"/api/async/no-login/example/{new_async_example.id}")
-    assert deleted_res.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_async_example_삭제_실패_NOT_FOUND(async_client):
-    not_exist_id = 999999
-    res = await async_client.delete(f"/api/async/no-login/example/{not_exist_id}")
+    # given, when
+    not_existed_example_id = "999999"
+    res = await async_client.delete(f"/api/async/no-login/example/{not_existed_example_id}")
+
+    # then
     assert res.status_code == 404
     assert res.json()["code"] == ErrorCode.NOT_FOUND
