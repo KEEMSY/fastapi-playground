@@ -66,18 +66,16 @@ class Logging(object, metaclass=SingletonLogging):
 
             # Set logging level based on the environment
             env = Environment(os.getenv('ENVIRONMENT', 'production').upper())
-
-            if env.is_debug:
+            if env.is_testing:
                 logger.setLevel(logging.DEBUG)
             else:
                 logger.setLevel(logging.INFO)
-
-            formatter = logging.Formatter(self._format_thread if isThread else self._format_basic)
-            file_path = self.get_log_path(path if path else name)
-            file_handler = logging.FileHandler(file_path)
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-            self._loggers[name].addHandler(file_handler)
+                formatter = logging.Formatter(self._format_thread if isThread else self._format_basic)
+                file_path = self.get_log_path(path if path else name)
+                file_handler = logging.FileHandler(file_path)
+                file_handler.setFormatter(formatter)
+                logger.addHandler(file_handler)
+                self._loggers[name].addHandler(file_handler)
 
         return self._loggers[name]
 
