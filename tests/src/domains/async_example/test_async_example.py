@@ -65,23 +65,44 @@ async def test_async_example_단일_조회_실패(async_client):
 
 @pytest.mark.asyncio
 async def test_async_example_수정(async_client):
-    res = await async_client.post("/api/async/no-login/example", json={"name": "test1", "description": "test"})
-    new_async_example = AsyncExampleResponse(**res.json())
+    # given
+    create_async_example_request = await AsyncExampleSteps.AsyncExample_생성요청(
+        name="test1",
+        description="test"
+    )
+    create_res = await async_client.post(url="/api/async/no-login/example", data=create_async_example_request.model_dump_json())
+    create_res_schema = AsyncExampleResponse.model_validate(create_res.json())
 
-    res = await async_client.put(f"/api/async/no-login/example", json={"name": "test2", "description": "test",
-                                                                       "async_example_id": new_async_example.id})
-    updated_async_example = AsyncExampleResponse(**res.json())
+    # when
+    update_async_example = await AsyncExampleSteps.AsyncExample_수정요청_v2(
+        async_example_id=create_res_schema.id,
+        name="test_update_name",
+        description="test_update_description"
+    )
+    update_res = await async_client.put(f"/api/async/no-login/example", data=update_async_example.model_dump_json())
+    update_res_schema = AsyncExampleResponse.model_validate(update_res.json())
 
-    assert res.status_code == 200
-    assert updated_async_example.name == "test2"
+    # then
+    assert update_res.status_code == 200
+    assert update_res_schema.name == "test_update_name"
 
 
 @pytest.mark.asyncio
 async def test_async_example_수정_실패_NOT_FOUND(async_client):
-    res = await async_client.put("/api/async/no-login/example", json={"name": "test2", "description": "test",
-                                                                      "async_example_id": 999999})
-    assert res.status_code == 404
-    assert res.json()["code"] == ErrorCode.NOT_FOUND
+    # given
+    undefined_id = 99999999
+    update_async_example = await AsyncExampleSteps.AsyncExample_수정요청_v2(
+        async_example_id=undefined_id,
+        name="test_update_name",
+        description="test_update_description"
+    )
+
+    # when
+    update_res = await async_client.put(f"/api/async/no-login/example", data=update_async_example.model_dump_json())
+
+    # then
+    assert update_res.status_code == 404
+    assert update_res.json()["code"] == ErrorCode.NOT_FOUND
 
 
 @pytest.mark.asyncio

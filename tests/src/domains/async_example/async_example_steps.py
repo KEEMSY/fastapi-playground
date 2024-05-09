@@ -1,4 +1,4 @@
-from src.domains.async_example.presentation.schemas import CreateAsyncExample
+from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV2
 
 """
 Request data 생성을 위한 스텝 클래스
@@ -24,8 +24,16 @@ res = await async_client.post(url="/TEST_URL", data=Request.json())
 
 class AsyncExampleSteps:
     @staticmethod
-    async def AsyncExample_생성요청(name, description):
+    async def AsyncExample_생성요청(name, description) -> CreateAsyncExample:
         return CreateAsyncExample(
+            name=name,
+            description=description
+        )
+
+    @staticmethod
+    async def AsyncExample_수정요청_v2(async_example_id, name, description) -> UpdateAsyncExampleV2:
+        return UpdateAsyncExampleV2(
+            async_example_id=async_example_id,
             name=name,
             description=description
         )
