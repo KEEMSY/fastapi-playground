@@ -9,7 +9,7 @@ from starlette.testclient import TestClient
 
 from src.database import Base, get_db, get_async_db
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 os.environ['ENVIRONMENT'] = 'TESTING'
@@ -111,14 +111,41 @@ async def async_session():
     try:
         yield async_session
     finally:
+        await async_cleanup_database(async_session)
         await async_session.close()
 
 
 @pytest_asyncio.fixture
-async def async_client(async_session, event_loop):
+async def async_client(async_session):
     async def override_get_db():
         yield async_session
 
     app.dependency_overrides[get_async_db] = override_get_db
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
+
+
+async def async_cleanup_database(session: AsyncSession):
+    """
+    [ 모든 테이블의 데이터를 삭제 ]
+    1. 외래 키 제약조건을 비활성화합니다.(테이블 연관 관계로 인한 데이터 삭제 오류 방지)
+    2. 모든 테이블의 데이터를 삭제한다.
+    3. 외래 키 제약조건을 다시 활성화한다.
+    """
+    # 1. 외래 키 제약조건 비활성화 (PostgreSQL과 MySQL에 맞게 조절)
+    if 'postgresql' in ASYNC_SQLALCHEMY_DATABASE_URL:
+        await session.execute(text('SET session_replication_role = REPLICA;'))
+    elif 'mysql' in ASYNC_SQLALCHEMY_DATABASE_URL:
+        await session.execute(text('SET foreign_key_checks = 0;'))
+
+    # 2. 모든 테이블의 데이터를 삭제
+    for table in reversed(Base.metadata.sorted_tables):
+        await session.execute(table.delete())
+
+    # 3. 외래 키 제약조건을 다시 활성화
+    if 'postgresql' in ASYNC_SQLALCHEMY_DATABASE_URL:
+        await session.execute(text('SET session_replication_role = DEFAULT;'))
+    elif 'mysql' in ASYNC_SQLALCHEMY_DATABASE_URL:
+        await session.execute(text('SET foreign_key_checks = 1;'))
+
+    await session.commit()  # 변경 사항을 적용
