@@ -95,11 +95,18 @@ def event_loop():
     loop.close()
 
 
-@pytest_asyncio.fixture
-async def async_session():
+# Session scope 으로 설정하여, 전체 테스트를 실행하는 동안 한번의 데이터베이스 스키마를 생성하도록 설정한다.
+@pytest_asyncio.fixture(scope="session")
+async def setup_database():
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+
+
+@pytest_asyncio.fixture
+async def async_session():
     async_session = AsyncTestingSessionLocal()
     try:
         yield async_session

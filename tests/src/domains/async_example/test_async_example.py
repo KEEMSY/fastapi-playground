@@ -4,7 +4,7 @@ from src.domains.async_example.constants import ErrorCode
 from src.domains.async_example.presentation.schemas import AsyncExampleResponse
 from tests.src.domains.async_example.async_example_steps import AsyncExampleSteps
 
-from tests.conftest import async_client, async_session, event_loop
+from tests.conftest import async_client, async_session, event_loop, setup_database
 
 
 @pytest.mark.asyncio
