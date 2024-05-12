@@ -16,7 +16,7 @@ async def test_async_example_정상_생성(async_client):
     )
 
     # when
-    res = await async_client.post(url="/api/async/no-login/example", data=create_async_example.model_dump_json())
+    res = await async_client.post(url="/api/async/no-login/example", content=create_async_example.model_dump_json())
     async_example_res = AsyncExampleResponse.model_validate(res.json())
 
     # then
@@ -41,7 +41,7 @@ async def test_async_example_단일_조회(async_client):
         name="test1",
         description="test"
     )
-    create_res = await async_client.post(url="/api/async/no-login/example", data=create_async_example.model_dump_json())
+    create_res = await async_client.post(url="/api/async/no-login/example", content=create_async_example.model_dump_json())
     create_async_example_res = AsyncExampleResponse.model_validate(create_res.json())
 
     # when
@@ -71,7 +71,7 @@ async def test_async_example_수정(async_client):
         description="test"
     )
     create_res = await async_client.post(url="/api/async/no-login/example",
-                                         data=create_async_example_request.model_dump_json())
+                                         content=create_async_example_request.model_dump_json())
     create_res_schema = AsyncExampleResponse.model_validate(create_res.json())
 
     # when
@@ -80,7 +80,7 @@ async def test_async_example_수정(async_client):
         name="test_update_name",
         description="test_update_description"
     )
-    update_res = await async_client.put(f"/api/async/no-login/example", data=update_async_example.model_dump_json())
+    update_res = await async_client.put(f"/api/async/no-login/example", content=update_async_example.model_dump_json())
     update_res_schema = AsyncExampleResponse.model_validate(update_res.json())
 
     # then
@@ -99,7 +99,7 @@ async def test_async_example_수정_실패_NOT_FOUND(async_client):
     )
 
     # when
-    update_res = await async_client.put(f"/api/async/no-login/example", data=update_async_example.model_dump_json())
+    update_res = await async_client.put(f"/api/async/no-login/example", content=update_async_example.model_dump_json())
 
     # then
     assert update_res.status_code == 404
@@ -114,7 +114,7 @@ async def test_async_example_삭제(async_client):
         description="test"
     )
     create_res = await async_client.post(url="/api/async/no-login/example",
-                                         data=create_async_example_request.model_dump_json())
+                                         content=create_async_example_request.model_dump_json())
     create_res_schema = AsyncExampleResponse.model_validate(create_res.json())
 
     # when
