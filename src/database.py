@@ -5,7 +5,7 @@ import time
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from config import SYNC_SQLALCHEMY_DATABASE_URL, ASYNC_SQLALCHEMY_DATABASE_URL
