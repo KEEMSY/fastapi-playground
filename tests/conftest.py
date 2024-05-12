@@ -3,7 +3,7 @@ import os
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from starlette.testclient import TestClient
 
@@ -86,7 +86,7 @@ pytest_asyncio 의 기본 event_loop fixture 는 scope 가 Function 이며,
 #     asyncio.get_event_loop().close()
 
 # 방법 3.
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="module")
 def event_loop():
     """Override pytest-asyncio's event loop fixture to session scope."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
@@ -121,7 +121,7 @@ async def async_client(async_session):
         yield async_session
 
     app.dependency_overrides[get_async_db] = override_get_db
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 
