@@ -10,15 +10,21 @@ class CreateAsyncExample(BaseModel):
     name: str
     description: str
 
-    class Config:
-        from_attributes = True
-        extra = 'forbid'
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }
 
 
 class ReadAsyncExample(BaseModel):
     page: int = 0
     size: int = 10
     keyword: Optional[str] = None
+
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }
 
 
 class AsyncExampleResponse(BaseModel):
@@ -29,22 +35,29 @@ class AsyncExampleResponse(BaseModel):
     modify_date: Optional[datetime.datetime] = None
     user: Optional[User]
 
-    class Config:
-        from_attributes = True
-        extra = 'forbid'
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }
 
 
 class ASyncExampleListResponse(BaseModel):
     total: int
     example_list: list[AsyncExampleResponse] = []
 
-    class Config:
-        from_attributes = True
-        extra = 'forbid'
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }
 
 
 class UpdateAsyncExampleV1(CreateAsyncExample):
     pass
+
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }
 
 
 class UpdateAsyncExampleV2(CreateAsyncExample):

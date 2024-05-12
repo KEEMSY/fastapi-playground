@@ -10,9 +10,10 @@ class CreateSyncExample(BaseModel):
     name: str
     description: str
 
-    class Config:
-        from_attributes = True
-        extra = 'forbid'
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }
 
 
 class SyncExampleResponse(BaseModel):
@@ -23,18 +24,20 @@ class SyncExampleResponse(BaseModel):
     modify_date: Optional[datetime.datetime] = None
     user: Union[User, None]
 
-    class Config:
-        from_attributes = True
-        extra = 'forbid'
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }
 
 
 class SyncExampleListResponse(BaseModel):
     total: int
     example_list: list[SyncExampleResponse] = []
 
-    class Config:
-        from_attributes = True
-        extra = 'forbid'
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }
 
 
 class UpdateSyncExampleV1(CreateSyncExample):

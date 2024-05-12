@@ -14,15 +14,17 @@ class SyncExampleSchema(BaseModel):
     modify_date: Optional[datetime.datetime] = None
     user: Optional[User]
 
-    class Config:
-        from_attributes = True
-        extra = 'forbid'
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }
 
 
 class SyncExampleListSchema(BaseModel):
     total: int
     example_list: list[SyncExampleSchema] = []
 
-    class Config:
-        from_attributes = True
-        extra = 'forbid'
+    model_config = {
+        'extra': 'forbid',
+        'from_attributes': True,
+    }

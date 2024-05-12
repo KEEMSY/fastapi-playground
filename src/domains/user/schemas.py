@@ -32,5 +32,6 @@ class User(BaseModel):
     username: str
     email: str
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        'from_attributes': True,
+    }
