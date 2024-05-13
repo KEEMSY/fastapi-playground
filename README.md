@@ -670,8 +670,9 @@ class Article(BaseModel):
    text: str | None
    extra: str | None
    
-   class Config:
-        extra = Extra.forbid
+   model_config = {
+        'extra': 'forbid',
+    }
        
 
 class Video(BaseModel):
@@ -679,9 +680,12 @@ class Video(BaseModel):
    text: str | None
    extra: str | None
    
-   class Config:
-        extra = Extra.forbid
-
+   # pydantic v2로 되면서 deprecated 된 방법 
+   # class Config:
+   #     extra = Extra.forbid
+  model_config = {
+        'extra': 'forbid',
+  }
    
 class Post(BaseModel):
    content: Article | Video
@@ -721,8 +725,9 @@ class Post(BaseModel):
    field_2: int | str
    content: Article | Video
 
-   class Config:
-      smart_union = True
+   model_config = {
+        'smart_union': 'forbid',
+    }
 
 
 p = Post(field_1=1, field_2="1", content={"video_id": 1})
