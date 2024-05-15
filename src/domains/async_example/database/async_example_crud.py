@@ -12,7 +12,7 @@ from src.domains.async_example.constants import DLErrorCode, ErrorCode
 from src.domains.async_example.database.models import AsyncExample
 from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV1, \
     UpdateAsyncExampleV2
-from src.exceptions import DLException, handle_exceptions
+from src.exceptions import DLException, handle_exceptions, ExceptionResponse
 
 logger = logging.getLogger(__name__)
 
@@ -48,53 +48,40 @@ async def read_async_example(db: AsyncSession, async_example_id: int) -> AsyncEx
         raise DLException(code="D0000", detail=f"Error while retrieving AsyncExample {async_example_id}")
 
 
+@handle_exceptions
 async def read_async_example_list(db, limit, offset, keyword):
-    try:
-        # 조건을 설정합니다. 기본적으로 모든 데이터를 대상으로 합니다.
-        search_condition = True  # 모든 데이터를 반환하는 기본 조건
+    # 조건을 설정한다. 기본적으로 모든 데이터를 대상으로 한다.
+    search_condition = True  # 모든 데이터를 반환하는 기본 조건
 
-        if keyword:
-            # 키워드가 주어진 경우 검색 조건을 추가합니다.
-            search_condition = or_(
-                AsyncExample.name.ilike(f'%{keyword}%'),
-                AsyncExample.description.ilike(f'%{keyword}%')
-            )
-
-        # 검색 조건을 기반으로 쿼리를 구성합니다.
-        query = select(AsyncExample).where(search_condition).order_by(AsyncExample.create_date.desc())
-
-        # 쿼리 실행
-        results = await db.execute(query.offset(offset).limit(limit))
-        async_example_list = results.scalars().all()
-        async_example_schema_list = [AsyncExampleSchema.model_validate(async_example) for async_example in
-                                     async_example_list]
-
-        # 전체 개수를 계산하는 쿼리를 생성합니다.
-        total_count_query = select(func.count()).select_from(
-            select(AsyncExample).where(search_condition).subquery()
+    if keyword:
+        # 키워드가 주어진 경우 검색 조건을 추가한다.
+        search_condition = or_(
+            AsyncExample.name.ilike(f'%{keyword}%'),
+            AsyncExample.description.ilike(f'%{keyword}%')
         )
 
-        # 전체 개수 실행
-        total_count = await db.execute(total_count_query)
-        total = total_count.scalar_one()
+    # 검색 조건을 기반으로 쿼리를 구성한다.
+    query = select(AsyncExample).where(search_condition).order_by(AsyncExample.create_date.desc())
 
-        return ASyncExampleSchemaList(total=total, example_list=async_example_schema_list)
+    # 쿼리 실행
+    results = await db.execute(query.offset(offset).limit(limit))
+    async_example_list = results.scalars().all()
+    async_example_schema_list = [AsyncExampleSchema.model_validate(async_example) for async_example in
+                                 async_example_list]
 
-    except ValidationError as ve:
-        logger.error(f"Validation error while retrieving ASyncExample: {ve}")
-        raise DLException(code=DLErrorCode.VALIDATION_ERROR, detail="Validation error on data input.")
+    # 전체 개수를 계산하는 쿼리를 생성한다.
+    total_count_query = select(func.count()).select_from(
+        select(AsyncExample).where(search_condition).subquery()
+    )
 
-    except SQLAlchemyError as e:
-        logger.error(f"Database error while retrieving SyncExample: {e}")
-        raise DLException(code=DLErrorCode.DATABASE_ERROR,
-                          detail="Database error occurred while retrieving ASyncExample.")
+    # 전체 개수 조회
+    total_count = await db.execute(total_count_query)
+    total = total_count.scalar_one()
 
-    except Exception as e:
-        logger.error(f"Unexpected error while retrieving SyncExample: {e}")
-        raise DLException(code=DLErrorCode.UNKNOWN_ERROR,
-                          detail=f"An unexpected error occurred while retrieving ASyncExample.: {e}")
+    return ASyncExampleSchemaList(total=total, example_list=async_example_schema_list)
 
 
+@handle_exceptions
 async def read_fetch_async_example_with_user(db: AsyncSession, async_example_id: int) -> AsyncExampleSchema:
     """
     연관 관계가 있는 경우, 한번에 모두 가져오는 쿼리를 발생시킨다.
@@ -110,13 +97,13 @@ async def read_fetch_async_example_with_user(db: AsyncSession, async_example_id:
 
         if async_example is None:
             logger.error(f"No AsyncExample found with id {async_example_id}")
-            raise DLException(code=ErrorCode.NOT_FOUND, detail=f"No AsyncExample found with id {async_example_id}")
+            raise ExceptionResponse(error_code=ErrorCode.NOT_FOUND,
+                                    message=f"No AsyncExample found with id {async_example_id}")
 
         return AsyncExampleSchema.model_validate(async_example)
 
-    except DLException as de:
-        logger.error(f"Failed to retrieve AsyncExample {async_example_id}: {de.detail}")
-        raise DLException(code=de.code, detail=de.detail)
+    except ExceptionResponse as er:
+        raise
 
     except Exception as e:
         logger.error(f"Error while retrieving AsyncExample {async_example_id}: {str(e)}")
