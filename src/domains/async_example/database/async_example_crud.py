@@ -1,7 +1,4 @@
 import logging
-from typing import Union
-
-from pydantic import ValidationError
 from sqlalchemy import select, or_, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,8 +7,6 @@ from sqlalchemy.orm import selectinload
 from src.domains.async_example.business.schemas import AsyncExampleSchema, ASyncExampleSchemaList
 from src.domains.async_example.constants import DLErrorCode, ErrorCode
 from src.domains.async_example.database.models import AsyncExample
-from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV1, \
-    UpdateAsyncExampleV2
 from src.exceptions import DLException, handle_exceptions, ExceptionResponse
 
 logger = logging.getLogger(__name__)
@@ -110,40 +105,39 @@ async def read_fetch_async_example_with_user(db: AsyncSession, async_example_id:
         raise DLException(detail=f"Error while retrieving AsyncExample {async_example_id}")
 
 
-async def update_async_example(db: AsyncSession, async_example_id: int,
-                               request: Union[UpdateAsyncExampleV1, UpdateAsyncExampleV2]) -> AsyncExampleSchema:
-    try:
-        async_example = await db.get(AsyncExample, async_example_id)
-        if async_example is None:
-            logger.error(f"No AsyncExample found with id {async_example_id}")
-            raise DLException(code=ErrorCode.NOT_FOUND, detail=f"No AsyncExample found with id {async_example_id}")
+@handle_exceptions
+async def update_async_example_v1(db: AsyncSession, async_example_id: int,
+                                  async_example_schema: AsyncExampleSchema) -> AsyncExampleSchema:
+    async_example = await db.get(AsyncExample, async_example_id)
+    if async_example is None:
+        logger.error(f"No AsyncExample found with id {async_example_id}")
+        raise ExceptionResponse(error_code=ErrorCode.NOT_FOUND,
+                                message=f"No AsyncExample found with id {async_example_id}")
 
-        async_example.name = request.name
-        async_example.description = request.description
-        await db.commit()
-        await db.refresh(async_example)
+    async_example.name = async_example_schema.name
+    async_example.description = async_example_schema.description
 
-        return AsyncExampleSchema.model_validate(async_example)
+    await db.commit()
+    await db.refresh(async_example)
 
-    except DLException as de:
-        logger.error(f"Failed to update AsyncExample: {de.detail}")
-        raise
+    return AsyncExampleSchema.model_validate(async_example)
 
-    except ValidationError as ve:
-        logger.error(f"Validation error while updating SyncExample: {ve}")
-        await db.rollback()
-        raise DLException(code=ErrorCode.VALIDATION_ERROR, detail="Validation error on data input.")
 
-    except SQLAlchemyError as e:
-        await db.rollback()
-        logger.error(f"Database error while updating SyncExample: {e}")
-        raise DLException(code=ErrorCode.DATABASE_ERROR, detail="Database error occurred while updating SyncExample.")
+@handle_exceptions
+async def update_async_example_v2(db: AsyncSession, async_example_schema: AsyncExampleSchema) -> AsyncExampleSchema:
+    async_example = await db.get(AsyncExample, async_example_schema.id)
+    if async_example is None:
+        logger.error(f"No AsyncExample found with id {async_example_schema.id}")
+        raise ExceptionResponse(error_code=ErrorCode.NOT_FOUND,
+                                message=f"No AsyncExample found with id {async_example_schema.id}")
 
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Unexpected error while updating SyncExample: {e}")
-        raise DLException(code=ErrorCode.UNKNOWN_ERROR,
-                          detail="An unexpected error occurred while updating SyncExample.")
+    async_example.name = async_example_schema.name
+    async_example.description = async_example_schema.description
+
+    await db.commit()
+    await db.refresh(async_example)
+
+    return AsyncExampleSchema.model_validate(async_example)
 
 
 async def delete_async_example(db: AsyncSession, async_example_id: int):
