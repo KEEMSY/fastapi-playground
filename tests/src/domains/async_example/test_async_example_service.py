@@ -181,6 +181,39 @@ class TestAsyncExampleByClassTest:
         # then
         assert len(async_example_schema_list.example_list) == 0
 
+    async def test_async_example_수정_테스트(self, async_db):
+        # given
+        async_example_schema = await self._save_async_example(async_db=async_db)
+        update_async_example = await AsyncExampleSteps.AsyncExample_수정요청_v2(
+            async_example_id=async_example_schema.id,
+            name="updated_test",
+            description="updated_test"
+        )
+
+        # when
+        updated_async_example = await AsyncExampleService(async_db=async_db).fetch_async_example_with_user_v2(
+            update_async_example
+        )
+
+        # then
+        assert updated_async_example.name == "updated_test"
+        assert updated_async_example.description == "updated_test"
+
+    async def test_async_example_수정_실페_테스트(self, async_db):
+        # given
+        update_async_example = await AsyncExampleSteps.AsyncExample_수정요청_v2(
+            async_example_id=999999,
+            name="updated_test",
+            description="updated_test"
+        )
+
+        # when, then
+        with pytest.raises(ExceptionResponse) as exc_info:
+            await AsyncExampleService(async_db=async_db).fetch_async_example_with_user_v2(
+                update_async_example
+            )
+        assert exc_info.value.error_code == ErrorCode.NOT_FOUND
+        assert str(exc_info.value.message) == f"No AsyncExample found with id {update_async_example.async_example_id}"
 
     ### Helper function ###
     async def _save_async_example(self, async_db: AsyncSession, name="test", description="test"):

@@ -66,6 +66,27 @@ class AsyncExampleService:
 
         return async_example_list
 
+    async def fetch_async_example_with_user_v2(self, request: UpdateAsyncExampleV2) -> AsyncExampleSchema:
+        try:
+            async_example_schema: AsyncExampleSchema = AsyncExampleSchema(
+                name=request.name,
+                description=request.description,
+                id=request.async_example_id,
+            )
+
+            async_example: AsyncExampleSchema = await async_example_crud \
+                .update_async_example_v2(self.async_db, async_example_schema)
+            return async_example
+
+        except ExceptionResponse as er:
+            logger.error(f"Failed to retrieve AsyncExample: {er.message}")
+            raise
+
+        except Exception as e:
+            logger.error(f"Unexpected error while retrieving AsyncExample: {str(e)}")
+            raise BLException(code=BLErrorCode.UNKNOWN_ERROR,
+                              detail=f"An unexpected error occurred while retrieving AsyncExample: {e}")
+
 
 async def create_async_example_with_no_user(db: AsyncSession, example_create: CreateAsyncExample):
     try:
@@ -123,7 +144,7 @@ async def fetch_async_example_with_user_v1(db: AsyncSession, async_example_id: i
                                            request: UpdateAsyncExampleV1) -> AsyncExampleSchema:
     try:
         async_example: AsyncExampleSchema = await async_example_crud \
-            .update_async_example(db, async_example_id, request)
+            .update_async_example_v1(db, async_example_id, request)
         return async_example
 
     except DLException as de:
@@ -138,9 +159,14 @@ async def fetch_async_example_with_user_v1(db: AsyncSession, async_example_id: i
 
 async def fetch_async_example_with_user_v2(db: AsyncSession, request: UpdateAsyncExampleV2) -> AsyncExampleSchema:
     try:
-        example_id = request.async_example_id
+        async_example_schema: AsyncExampleSchema = AsyncExampleSchema(
+            name=request.name,
+            description=request.description,
+            id=request.async_example_id,
+        )
+
         async_example: AsyncExampleSchema = await async_example_crud \
-            .update_async_example(db, example_id, request)
+            .update_async_example_v2(db, async_example_schema)
         return async_example
 
     except DLException as de:
