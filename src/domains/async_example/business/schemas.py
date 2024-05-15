@@ -7,12 +7,12 @@ from src.domains.user.schemas import User
 
 
 class AsyncExampleSchema(BaseModel):
-    id: int
+    id: Optional[int] = None
     name: str
     description: str
-    create_date: datetime.datetime
+    create_date: Optional[datetime.datetime] = None
     modify_date: Optional[datetime.datetime] = None
-    user: Optional[User]
+    user: Optional[User] = None
 
     model_config = {
         'extra': 'forbid',

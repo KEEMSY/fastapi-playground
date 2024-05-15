@@ -12,37 +12,22 @@ from src.domains.async_example.constants import DLErrorCode, ErrorCode
 from src.domains.async_example.database.models import AsyncExample
 from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV1, \
     UpdateAsyncExampleV2
-from src.exceptions import DLException
+from src.exceptions import DLException, handle_exceptions
 
 logger = logging.getLogger(__name__)
 
 
-async def create_async_example_with_no_user(db: AsyncSession, example_create: CreateAsyncExample):
-    try:
-        async_example = AsyncExample(
-            name=example_create.name,
-            description=example_create.description
-        )
-        db.add(async_example)
-        await db.commit()
-        await db.refresh(async_example)
+@handle_exceptions
+async def create_async_example(db: AsyncSession, async_example: AsyncExampleSchema) -> AsyncExampleSchema:
+    async_example = AsyncExample(
+        name=async_example.name,
+        description=async_example.description
+    )
+    db.add(async_example)
+    await db.commit()
+    await db.refresh(async_example)
 
-        return AsyncExampleSchema.model_validate(async_example)
-
-    except ValidationError as ve:
-        logger.error(f"Validation error while creating SyncExample: {ve}")
-        await db.rollback()
-        raise DLException(code="D0001", detail="Validation error on data input.")
-
-    except SQLAlchemyError as e:
-        await db.rollback()
-        logger.error(f"Database error while creating SyncExample: {e}")
-        raise DLException(detail="Database error occurred while creating SyncExample.")
-
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Unexpected error while creating SyncExample: {e}")
-        raise DLException(detail="An unexpected error occurred while creating SyncExample.")
+    return AsyncExampleSchema.model_validate(async_example)
 
 
 async def read_async_example(db: AsyncSession, async_example_id: int) -> AsyncExampleSchema:

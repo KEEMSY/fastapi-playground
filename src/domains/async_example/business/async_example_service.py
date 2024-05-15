@@ -14,13 +14,18 @@ logger = logging.getLogger(__name__)
 
 async def create_async_example_with_no_user(db: AsyncSession, example_create: CreateAsyncExample):
     try:
+        async_example: AsyncExampleSchema = AsyncExampleSchema(
+            name=example_create.name,
+            description=example_create.description
+        )
+
         created_async_example: AsyncExampleSchema = await async_example_crud \
-            .create_async_example_with_no_user(db, example_create)
+            .create_async_example(db, async_example)
         return created_async_example
 
-    except DLException as de:
-        logger.error(f"Failed to create SyncExample: {de.detail}")
-        raise BLException(code=de.code, detail=de.detail)
+    except ExceptionResponse as er:
+        logger.error(f"Failed to create SyncExample: {er.message}")
+        raise
 
     except Exception as e:
         logger.error(f"Unexpected error while creating SyncExample: {str(e)}")
