@@ -14,17 +14,17 @@ class AsyncExampleSchema(BaseModel):
     modify_date: Optional[datetime.datetime] = None
     user: Optional[User] = None
 
-    model_config = {
-        'extra': 'forbid',
-        'from_attributes': True,
-    }
+    class Config:
+        orm_mode = True
+        extra = 'forbid'
+        from_attributes = True
 
 
 class ASyncExampleSchemaList(BaseModel):
     total: int
     example_list: list[AsyncExampleSchema] = []
 
-    model_config = {
-        'extra': 'forbid',
-        'from_attributes': True,
-    }
+    class Config:
+        orm_mode = True
+        extra = 'forbid'
+        from_attributes = True
