@@ -100,6 +100,16 @@ class TestAsyncExampleByFunctionalTest:
         with pytest.raises(ExceptionResponse) as exc_info:
             await read_async_example(async_db, async_example_schema.id)
 
+    async def test_async_example_삭제_실패_테스트(self, async_db):
+        # given
+        not_existed_example_id = 999999
+
+        # when, then
+        with pytest.raises(ExceptionResponse) as exc_info:
+            await delete_async_example(async_db, example_id=not_existed_example_id)
+        assert exc_info.value.error_code == ErrorCode.NOT_FOUND
+        assert str(exc_info.value.message) == f"No AsyncExample found with id {not_existed_example_id}"
+
     ### Helper function ###
     async def _save_async_example(self, async_db: AsyncSession, name="test", description="test"):
         create_async_example = await AsyncExampleSteps.AsyncExample_생성요청(
@@ -214,6 +224,31 @@ class TestAsyncExampleByClassTest:
             )
         assert exc_info.value.error_code == ErrorCode.NOT_FOUND
         assert str(exc_info.value.message) == f"No AsyncExample found with id {update_async_example.async_example_id}"
+
+    async def test_async_example_삭제_테스트(self, async_db):
+        # given
+        async_example_schema = await self._save_async_example(async_db=async_db)
+
+        # when
+        await AsyncExampleService(async_db=async_db).delete_async_example(async_example_schema.id)
+
+        # then
+        with pytest.raises(ExceptionResponse) as exc_info:
+            await AsyncExampleService(async_db=async_db).get_async_example(
+                async_example_id=async_example_schema.id
+            )
+
+    async def test_async_example_삭제_실패_테스트(self, async_db):
+        # given
+        not_existed_example_id = 999999
+
+        # when, then
+        with pytest.raises(ExceptionResponse) as exc_info:
+            await AsyncExampleService(async_db=async_db).delete_async_example(
+                example_id=not_existed_example_id
+            )
+        assert exc_info.value.error_code == ErrorCode.NOT_FOUND
+        assert str(exc_info.value.message) == f"No AsyncExample found with id {not_existed_example_id}"
 
     ### Helper function ###
     async def _save_async_example(self, async_db: AsyncSession, name="test", description="test"):

@@ -1,11 +1,10 @@
 import logging
 from sqlalchemy import select, or_, func
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.domains.async_example.business.schemas import AsyncExampleSchema, ASyncExampleSchemaList
-from src.domains.async_example.constants import DLErrorCode, ErrorCode
+from src.domains.async_example.constants import ErrorCode
 from src.domains.async_example.database.models import AsyncExample
 from src.exceptions import DLException, handle_exceptions, ExceptionResponse
 
@@ -140,15 +139,17 @@ async def update_async_example_v2(db: AsyncSession, async_example_schema: AsyncE
     return AsyncExampleSchema.model_validate(async_example)
 
 
+@handle_exceptions
 async def delete_async_example(db: AsyncSession, async_example_id: int):
     async_example = await db.get(AsyncExample, async_example_id)
     if async_example is None:
         logger.error(f"No AsyncExample found with id {async_example_id}")
-        raise DLException(code=ErrorCode.NOT_FOUND, detail=f"No AsyncExample found with id {async_example_id}")
-    try:
-        await db.delete(async_example)
-        await db.commit()
-        logger.info(f"Deleted AsyncExample with ID {async_example_id}")
+        raise ExceptionResponse(error_code=ErrorCode.NOT_FOUND,
+                                message=f"No AsyncExample found with id {async_example_id}")
+
+    await db.delete(async_example)
+    await db.commit()
+    logger.info(f"Deleted AsyncExample with ID {async_example_id}")
 
     except SQLAlchemyError as e:
         await db.rollback()
