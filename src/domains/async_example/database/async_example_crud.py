@@ -10,6 +10,15 @@ from src.exceptions import DLException, handle_exceptions, ExceptionResponse
 
 logger = logging.getLogger(__name__)
 
+"""
+[ 해야 할 일 ]
+1. commit 위치 변경 
+- async_example_repository(port) 생성 및 구현체(adapter) 생성 -> 구현체에서 commit 관리
+
+2. DL에서 발생한 예측하지 못한 에러 처리
+- 이것이 DLException으로 처리해야 된다 생각 24.05.15
+"""
+
 
 @handle_exceptions
 async def create_async_example(db: AsyncSession, async_example: AsyncExampleSchema) -> AsyncExampleSchema:
