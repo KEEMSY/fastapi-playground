@@ -1,3 +1,4 @@
+from src.domains.async_example.business.schemas import AsyncExampleSchema
 from src.domains.async_example.presentation.schemas import CreateAsyncExample, UpdateAsyncExampleV2
 
 """
@@ -37,3 +38,11 @@ class AsyncExampleSteps:
             name=name,
             description=description
         )
+
+    @staticmethod
+    async def AsyncExample_스키마_생성(name: str, description: str) -> AsyncExampleSchema:
+        return AsyncExampleSchema(
+            name=name,
+            description=description
+        )
+
