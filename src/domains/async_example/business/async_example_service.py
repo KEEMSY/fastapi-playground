@@ -14,12 +14,16 @@ logger = logging.getLogger(__name__)
 """
 [ 해야할 일 ]
 
-1. Port 추가
+1. Port 추가(완료)
 현재 BL -> DL로 향하는 의존성을 뒤집기 위해 Port(인터페이스)를 추가한다.
 - 추가된 Port는 BL 내 Service에서 사용한다.
 - Port는 Input/Output 두종류로 나뉘지만, 가정 기초적으로 Ouput(DB 등)를 먼저 작성한다.
 - BL에서는 DB Port를 호출하여 유스케이스에 필요한 데이터 상호작용을 진행한다. 
+
+2. Port를 사용하도록 개선
 """
+
+
 class AsyncExampleService:
     def __init__(self, async_db: AsyncSession):
         self.async_db = async_db

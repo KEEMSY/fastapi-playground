@@ -160,13 +160,3 @@ async def delete_async_example(db: AsyncSession, async_example_id: int):
     await db.commit()
     logger.info(f"Deleted AsyncExample with ID {async_example_id}")
 
-    except SQLAlchemyError as e:
-        await db.rollback()
-        logger.error(f"Database error while deleting ASyncExample: {e}")
-        raise DLException(code=DLErrorCode.DATABASE_ERROR, detail="Database error occurred while deleting SyncExample.")
-
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Unexpected error while deleting SyncExample: {e}")
-        raise DLException(code=DLErrorCode.UNKNOWN_ERROR,
-                          detail="An unexpected error occurred while deleting ASyncExample.")
