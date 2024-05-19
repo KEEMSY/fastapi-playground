@@ -11,7 +11,7 @@ from src.domains.user.models import User
 from src.domains.question.models import Question
 from src.domains.answer.models import Answer
 from src.domains.sync_example.database.models import SyncExample
-from src.domains.async_example.database.models import AsyncExample
+from src.domains.async_example.database.models import AsyncExample, RelatedAsyncExample, DerivedFromAsyncExample
 ### 삭제되면 안됨 끝 ###
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
