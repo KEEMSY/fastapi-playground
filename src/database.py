@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import time
+from contextlib import asynccontextmanager
+from functools import wraps
 
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.exc import SQLAlchemyError
@@ -78,3 +80,26 @@ def get_db():
             db.close()
     if retry_count > 5:
         logger.error("Maximum retry attempts reached, failing.")
+
+
+class AsyncTransactionManager:
+    def __init__(self, async_db: AsyncSession):
+        self.async_db = async_db
+
+    @asynccontextmanager
+    async def transaction(self):
+        try:
+            await self.async_db.begin()
+            yield
+            await self.async_db.commit()
+        except Exception as e:
+            await self.async_db.rollback()
+            raise e
+
+
+def async_transactional(method):
+    @wraps(method)
+    async def wrapper(self, *args, **kwargs):
+        async with self.transaction_manager.transaction():
+            return await method(self, *args, **kwargs)
+    return wrapper
