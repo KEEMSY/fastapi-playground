@@ -22,9 +22,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# sqlalchemy.url 설정은 컨테이너(도커)주소로 관리가 되지 않아 실제 주소를 작성하였음. 24.05.19
 if not config.get_main_option("sqlalchemy.url"):
     config.set_main_option("sqlalchemy.url", "mysql+pymysql://{username}:{password}@{host}:{port}/{db_name}".format(
-        username="root", password="test", host="db", port="3306", db_name="fastapi_playground"
+        username="root", password="test", host="localhost", port="13306", db_name="fastapi_playground"
     ))
 
 # add your model's MetaData object here
@@ -32,6 +33,7 @@ if not config.get_main_option("sqlalchemy.url"):
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
