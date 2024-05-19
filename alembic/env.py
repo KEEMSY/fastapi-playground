@@ -28,6 +28,11 @@ if not config.get_main_option("sqlalchemy.url"):
         username="root", password="test", host="localhost", port="13306", db_name="fastapi_playground"
     ))
 
+    # For TestDB
+    # config.set_main_option("sqlalchemy.url", "mysql+pymysql://{username}:{password}@{host}:{port}/{db_name}".format(
+    #     username="root", password="test", host="localhost", port="3306", db_name="fastapi_test"
+    # ))
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
