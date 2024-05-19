@@ -30,7 +30,7 @@ class AsyncExampleCRUD:
             description=async_example.description
         )
         self.db.add(async_example)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(async_example)
 
         return AsyncExampleSchema.model_validate(async_example)
