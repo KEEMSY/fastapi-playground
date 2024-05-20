@@ -12,8 +12,13 @@ class AsyncExamplePersistenceAdapter(AsyncExampleRepository, ABC):
 
     def __init__(self, async_db: AsyncSession):
         self.async_rdb_crud = AsyncExampleCRUD(async_db)
+
         self.transaction_manager = AsyncTransactionManager(async_db)
 
+        print()
+        print("in AsyncExamplePersistenceAdapter")
+        print("transaction_manager.async_db: ", self.transaction_manager.async_db)
+        print()
     @async_transactional
     async def create_async_example(self, async_example: AsyncExampleSchema) -> AsyncExampleSchema:
         return await self.async_rdb_crud.create_async_example(async_example)

@@ -12,6 +12,9 @@ from src.database import Base, get_db, get_async_db
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from src.dependecies import get_async_example_repository
+from src.domains.async_example.database.adapters.async_example_persistance_adapter import AsyncExamplePersistenceAdapter
+
 os.environ['ENVIRONMENT'] = 'TESTING'
 SYNC_SQLALCHEMY_DATABASE_URL = os.environ["SYNC_SQLALCHEMY_TEST_DATABASE_URL"]
 
@@ -113,6 +116,26 @@ async def async_session():
     finally:
         await async_cleanup_database(async_session)
         await async_session.close()
+
+
+@pytest_asyncio.fixture
+async def async_example_repository():
+    async def override_get_db():
+        yield async_session()
+
+    app.dependency_overrides[get_async_db] = override_get_db
+
+    return AsyncExamplePersistenceAdapter(async_session)
+
+
+@pytest_asyncio.fixture
+async def get_async_example_repository(async_example_repository):
+    async def override_async_example_repository():
+        yield async_example_repository
+
+    app.dependency_overrides[get_async_example_repository] = override_async_example_repository
+
+    return AsyncExamplePersistenceAdapter(async_session)
 
 
 @pytest_asyncio.fixture
