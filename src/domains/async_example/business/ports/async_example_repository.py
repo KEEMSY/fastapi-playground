@@ -9,7 +9,7 @@ class AsyncExampleRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_async_example(self, example_id: str) -> AsyncExampleSchema:
+    async def get_async_example(self, async_example_id: int) -> AsyncExampleSchema:
         pass
 
     @abstractmethod

@@ -1,7 +1,10 @@
 import logging
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.dependecies import get_async_example_repository
+from src.domains.async_example.business.ports.async_example_repository import AsyncExampleRepository
 from src.domains.async_example.business.schemas import AsyncExampleSchema, ASyncExampleSchemaList
 from src.domains.async_example.constants import BLErrorCode
 from src.domains.async_example.database import async_example_crud
@@ -25,8 +28,11 @@ logger = logging.getLogger(__name__)
 
 
 class AsyncExampleService:
-    def __init__(self, async_db: AsyncSession):
+    def __init__(self,
+                 async_db: AsyncSession,
+                 async_repository: AsyncExampleRepository = Depends(get_async_example_repository)):
         self.async_db = async_db
+        self.async_repository = async_repository
 
     async def create_async_example_with_no_user(self, example_create: CreateAsyncExample):
         try:
@@ -34,7 +40,6 @@ class AsyncExampleService:
                 name=example_create.name,
                 description=example_create.description
             )
-
             created_async_example: AsyncExampleSchema = await async_example_crud \
                 .create_async_example(self.async_db, async_example)
             return created_async_example
@@ -49,8 +54,7 @@ class AsyncExampleService:
 
     async def get_async_example(self, async_example_id: int) -> AsyncExampleSchema:
         try:
-            async_example: AsyncExampleSchema = await async_example_crud \
-                .read_fetch_async_example_with_user(self.async_db, async_example_id)
+            async_example: AsyncExampleSchema = await self.async_repository.get_async_example(async_example_id)
             return async_example
 
         except ExceptionResponse as er:
