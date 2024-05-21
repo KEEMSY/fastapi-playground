@@ -120,8 +120,6 @@ async def async_session():
 
 @pytest_asyncio.fixture
 async def async_example_repository():
-    app.dependency_overrides[get_async_db] = async_session
-
     return AsyncExamplePersistenceAdapter(async_session)
 
 
