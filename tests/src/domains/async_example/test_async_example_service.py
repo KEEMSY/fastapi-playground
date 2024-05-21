@@ -14,7 +14,7 @@ from src.exceptions import ExceptionResponse
 from tests.src.domains.async_example.async_example_steps import AsyncExampleSteps
 
 from tests.conftest import async_session as async_db, event_loop, setup_database, async_example_repository, \
-    get_async_example_repository
+    get_async_example_repository, get_async_example_repository, async_session
 
 
 @pytest.mark.asyncio
