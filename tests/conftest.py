@@ -1,6 +1,7 @@
 import asyncio
 import os
 
+import aioredis
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
@@ -14,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 from src.dependecies import get_async_example_repository
 from src.domains.async_example.database.adapters.async_example_persistance_adapter import AsyncExamplePersistenceAdapter
+from src.domains.async_example.database.async_example_redis import AsyncExampleRedis
 
 os.environ['ENVIRONMENT'] = 'TESTING'
 SYNC_SQLALCHEMY_DATABASE_URL = os.environ["SYNC_SQLALCHEMY_TEST_DATABASE_URL"]
@@ -137,6 +139,19 @@ async def async_client(async_session):
     app.dependency_overrides[get_async_db] = override_get_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
+
+
+@pytest_asyncio.fixture()
+async def redis_client():
+    redis = aioredis.from_url('redis://:myStrongPassword@localhost:16379', decode_responses=True)
+    await redis.flushdb()  # Flush the database before tests
+    yield redis
+    await redis.close()
+
+
+@pytest_asyncio.fixture()
+async def async_example_redis(redis_client):
+    return AsyncExampleRedis(redis_url='redis://:myStrongPassword@localhost:16379')
 
 
 async def async_cleanup_database(session: AsyncSession):
