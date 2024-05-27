@@ -1,9 +1,12 @@
 import asyncio
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 from functools import wraps
 
+import aioredis
+import redis
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -11,6 +14,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from config import SYNC_SQLALCHEMY_DATABASE_URL, ASYNC_SQLALCHEMY_DATABASE_URL
+from src.exceptions import ExceptionResponse
 
 """
 create_engine, sessionmaker 등을 사용하는것은 SQLAlchemy 데이터베이스를 사용하기 위해 따라야 할 규칙이다.
@@ -102,4 +106,44 @@ def async_transactional(method):
     async def wrapper(self, *args, **kwargs):
         async with self.transaction_manager.transaction():
             return await method(self, *args, **kwargs)
+
     return wrapper
+
+
+async def get_async_redis_client():
+    try:
+        redis_host = os.getenv('REDIS_HOST', 'localhost')
+        redis_port = int(os.getenv('REDIS_PORT', 6379))
+        redis_password = os.getenv('REDIS_PASSWORD', '')
+
+        redis_url = f'redis://:{redis_password}@{redis_host}:{redis_port}'
+        redis_client = aioredis.from_url(redis_url, decode_responses=True)
+
+        # Test the connection
+        await redis_client.ping()
+
+        return redis_client
+    except aioredis.ConnectionError as e:
+        raise ExceptionResponse(message=f"비동기 Redis 연결 간 에러가 발생 했습니다.: {str(e)}", error_code="R0000")
+
+
+def get_sync_redis_client():
+    try:
+        redis_host = os.getenv('REDIS_HOST', 'localhost')
+        redis_port = int(os.getenv('REDIS_PORT', 6379))
+        redis_password = os.getenv('REDIS_PASSWORD', '')
+
+        redis_client = redis.StrictRedis(
+            host=redis_host,
+            port=redis_port,
+            password=redis_password,
+            db=0,
+            decode_responses=True
+        )
+
+        # Test the connection
+        redis_client.ping()
+
+        return redis_client
+    except redis.ConnectionError as e:
+        raise ExceptionResponse(message=f"동기 Redis 연결 간 에러가 발생 했습니다.: {str(e)}", error_code="R0000")
