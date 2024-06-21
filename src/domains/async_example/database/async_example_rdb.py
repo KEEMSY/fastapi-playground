@@ -16,6 +16,17 @@ logger = logging.getLogger(__name__)
 [ 해야할 일 ]
 트랜잭션 처리를 위한 작업 진행
 - 모든 Command 쿼리 내에 commit 삭제, flush 작업 진행
+
+모든 Query 쿼리 내에 commit 및 flush 선택 옵션 추가
+- is_commit: True, False
+- is_flush: True, False
+
+조회 메서드 내, 필요 기능 정리
+- 필터링을 위한 동적 메서드(조회(단일), 검색(다수))추가
+  - 속성 값을 통한 조회
+  - 키워드를 통한 검색
+  - 정
+- 페이징
 """
 
 
