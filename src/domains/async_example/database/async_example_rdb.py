@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import or_, select, func
+from sqlalchemy import or_, select, func, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -47,7 +47,12 @@ class AsyncExampleCRUD:
         return AsyncExampleSchema.model_validate(async_example)
 
     @handle_exceptions
-    async def read_async_example_list(self, limit, offset, keyword):
+    async def read_async_example_list(self, limit, offset, keyword, sort_by=None, sort_order=None):
+        if sort_by is None:
+            sort_by = ['create_date']  # 기본 정렬 컬럼
+        if sort_order is None:
+            sort_order = ['desc']  # 기본 정렬 순서
+
         # 조건을 설정한다. 기본적으로 모든 데이터를 대상으로 한다.
         search_condition = True  # 모든 데이터를 반환하는 기본 조건
 
@@ -57,6 +62,13 @@ class AsyncExampleCRUD:
                 AsyncExample.name.ilike(f'%{keyword}%'),
                 AsyncExample.description.ilike(f'%{keyword}%')
             )
+
+        # 정렬 조건을 동적으로 설정
+        order_by_clauses = []
+        for column_name, direction in zip(sort_by, sort_order):
+            sort_column = getattr(AsyncExample, column_name, AsyncExample.create_date)
+            sort_direction = desc if direction == 'desc' else asc
+            order_by_clauses.append(sort_direction(sort_column))
 
         # 검색 조건을 기반으로 쿼리를 구성한다.
         query = select(AsyncExample).where(search_condition).order_by(AsyncExample.create_date.desc())

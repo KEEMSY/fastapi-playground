@@ -50,6 +50,28 @@ class TestAsyncExampleRDB:
         assert async_example_schema.name == expected.name
         assert async_example_schema.description == expected.description
 
+    async def test_async_example_list_조회_정렬_테스트(self):
+        # given
+        async_example_schema = await AsyncExampleSteps.AsyncExample_스키마_생성(
+            name="test_name", description="test_description"
+        )
+        async_example_schema = await self.async_example_rdb.create_async_example(
+            async_example_schema)
+        async_example_schema2 = await AsyncExampleSteps.AsyncExample_스키마_생성(
+            name="test_name2", description="test_description2"
+        )
+        async_example_schema2 = await self.async_example_rdb.create_async_example(
+            async_example_schema2)
+
+        # when
+        async_example_list = await self.async_example_rdb.read_async_example_list(
+            limit=10, offset=0, keyword=None, sort_by=['name'], sort_order=['asc']
+        )
+
+        # then
+        assert async_example_list.example_list[0].name == async_example_schema.name
+        assert async_example_list.example_list[1].name == async_example_schema2.name
+
     async def test_async_example_조회_실패_테스트(self):
         # given
         not_existed_example_id = 99999
