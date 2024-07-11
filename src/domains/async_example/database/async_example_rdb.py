@@ -64,14 +64,10 @@ class AsyncExampleCRUD:
             )
 
         # 정렬 조건을 동적으로 설정
-        order_by_clauses = []
-        for column_name, direction in zip(sort_by, sort_order):
-            sort_column = getattr(AsyncExample, column_name, AsyncExample.create_date)
-            sort_direction = desc if direction == 'desc' else asc
-            order_by_clauses.append(sort_direction(sort_column))
+        order_by_clauses = self._create_order_by_clauses(sort_by, sort_order)
 
         # 검색 조건을 기반으로 쿼리를 구성한다.
-        query = select(AsyncExample).where(search_condition).order_by(AsyncExample.create_date.desc())
+        query = select(AsyncExample).where(search_condition).order_by(*order_by_clauses)
 
         # 쿼리 실행
         results = await self.db.execute(query.offset(offset).limit(limit))
@@ -216,3 +212,21 @@ class AsyncExampleCRUD:
         total = total_count.scalar_one()
 
         return RelatedAsyncExampleSchemaList(total=total, example_list=async_example_schema_list)
+
+    def _create_order_by_clauses(self, sort_by, sort_order):
+        order_by_clauses = []
+        for column_name, direction in zip(sort_by, sort_order):
+            sort_column = self._get_sort_column(model=AsyncExample, column_name=column_name)
+            if direction.lower() not in ['asc', 'desc']:
+                raise ValueError(f"Invalid sort direction '{direction}'. Use 'asc' or 'desc'.")
+            sort_direction = desc if direction.lower() == 'desc' else asc
+            order_by_clauses.append(sort_direction(sort_column))
+        return order_by_clauses
+
+    def _get_sort_column(self, model, column_name):
+        # 상위 메서드로 빼야 할 듯(혹은 유틸 메서드로)
+        try:
+            return getattr(model, column_name)
+        except AttributeError:
+            raise ExceptionResponse(error_code=ErrorCode.DATABASE_ERROR,
+                                    message=f"Column '{column_name}' does not exist in {model.__name__}.")

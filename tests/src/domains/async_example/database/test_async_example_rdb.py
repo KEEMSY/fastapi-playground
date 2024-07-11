@@ -102,6 +102,24 @@ class TestAsyncExampleRDB:
         # then
         assert len(async_example_list.example_list) == n
 
+    async def test_async_example_리스트_조회_실패_테스트_없는_칼럼으로_정렬(self):
+        # given
+        async_example_schema = await AsyncExampleSteps.AsyncExample_스키마_생성(
+            name="test_name", description="test_description"
+        )
+
+        n = 10
+        for _ in range(n):
+            await self.async_example_rdb.create_async_example(async_example_schema)
+
+        # when
+        with pytest.raises(ExceptionResponse) as exc_info:
+            await self.async_example_rdb.read_async_example_list(
+                limit=10, offset=0, keyword=None, sort_by=['not_exist'], sort_order=['asc']
+            )
+        assert exc_info.value.error_code == ErrorCode.DATABASE_ERROR
+        assert str(exc_info.value.message) == "Column 'not_exist' does not exist in AsyncExample."
+
     async def test_async_example_수정_테스트(self):
         # given
         async_example_schema = await AsyncExampleSteps.AsyncExample_스키마_생성(
