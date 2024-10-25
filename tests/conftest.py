@@ -3,6 +3,10 @@ import os
 
 import aioredis
 import pytest
+from pytest_alembic import Config
+from alembic.command import upgrade
+from alembic import command
+from alembic.config import Config
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -14,11 +18,27 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from src.dependecies import get_async_example_repository
-from src.domains.async_example.database.adapters.async_example_persistance_adapter import AsyncExamplePersistenceAdapter
+from src.domains.async_example.database.adapters.async_example_persistance_adapter import (
+    AsyncExamplePersistenceAdapter,
+)
 from src.domains.async_example.database.async_example_redis import AsyncExampleRedis
 
-os.environ['ENVIRONMENT'] = 'TESTING'
+os.environ["ENVIRONMENT"] = "TESTING"
 SYNC_SQLALCHEMY_DATABASE_URL = os.environ["SYNC_SQLALCHEMY_TEST_DATABASE_URL"]
+
+
+def sync_create_database():
+    engine = create_engine(SYNC_SQLALCHEMY_DATABASE_URL.rsplit("/", 1)[0])
+    with engine.connect() as conn:
+        conn.execute(text("CREATE DATABASE IF NOT EXISTS fastapi_test"))
+
+
+async def async_create_database():
+    engine = create_async_engine(ASYNC_SQLALCHEMY_DATABASE_URL.rsplit("/", 1)[0])
+    async with engine.begin() as conn:
+        await conn.execute(text("CREATE DATABASE IF NOT EXISTS fastapi_test"))
+    await engine.dispose()
+
 
 # sync_engine = create_engine(SYNC_SQLALCHEMY_DATABASE_URL, echo=True)
 sync_engine = create_engine(SYNC_SQLALCHEMY_DATABASE_URL)
@@ -27,16 +47,23 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_
 from src.main import app
 
 
-@pytest.fixture
-def sync_session():
-    Base.metadata.drop_all(bind=sync_engine)
-    Base.metadata.create_all(bind=sync_engine)
+@pytest_asyncio.fixture(scope="session")
+async def apply_migrations(async_setup_database):
+    config = Config("alembic.ini")
+    command.upgrade(config, "head")
+    yield
+    command.downgrade(config, "base")
 
+
+@pytest.fixture
+def sync_session(setup_database):
+    Base.metadata.create_all(bind=sync_engine)
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
+        Base.metadata.drop_all(bind=sync_engine)
 
 
 @pytest.fixture
@@ -90,6 +117,7 @@ pytest_asyncio 의 기본 event_loop fixture 는 scope 가 Function 이며,
 # def pytest_sessionfinish(session, exitstatus):
 #     asyncio.get_event_loop().close()
 
+
 # 방법 3.
 @pytest_asyncio.fixture(scope="module")
 def event_loop():
@@ -102,22 +130,27 @@ def event_loop():
 
 # Session scope 으로 설정하여, 전체 테스트를 실행하는 동안 한번의 데이터베이스 스키마를 생성하도록 설정한다.
 @pytest_asyncio.fixture(scope="session")
-async def setup_database():
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+def setup_database():
+    sync_create_database()
     yield
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    # 여기에 데이터베이스 정리 로직을 추가할 수 있습니다.
+
+
+@pytest_asyncio.fixture(scope="session")
+async def async_setup_database():
+    await async_create_database()
+    yield
+    # 여기에 비동기 데이터베이스 정리 로직을 추가할 수 있습니다.
 
 
 @pytest_asyncio.fixture
-async def async_session():
-    async_session = AsyncTestingSessionLocal()
-    try:
-        yield async_session
-    finally:
-        await async_cleanup_database(async_session)
-        await async_session.close()
+async def async_session(async_setup_database):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    async with AsyncTestingSessionLocal() as session:
+        yield session
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest_asyncio.fixture
@@ -137,13 +170,17 @@ async def async_client(async_session):
         yield async_session
 
     app.dependency_overrides[get_async_db] = override_get_db
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client
 
 
 @pytest_asyncio.fixture()
 async def redis_client():
-    redis = aioredis.from_url('redis://:myStrongPassword@localhost:16379', decode_responses=True)
+    redis = aioredis.from_url(
+        "redis://:myStrongPassword@localhost:16379", decode_responses=True
+    )
     await redis.flushdb()  # Flush the database before tests
     yield redis
     await redis.close()
@@ -151,7 +188,7 @@ async def redis_client():
 
 @pytest_asyncio.fixture()
 async def async_example_redis(redis_client):
-    return AsyncExampleRedis(redis_url='redis://:myStrongPassword@localhost:16379')
+    return AsyncExampleRedis(redis_url="redis://:myStrongPassword@localhost:16379")
 
 
 async def async_cleanup_database(session: AsyncSession):
@@ -162,19 +199,19 @@ async def async_cleanup_database(session: AsyncSession):
     3. 외래 키 제약조건을 다시 활성화한다.
     """
     # 1. 외래 키 제약조건 비활성화 (PostgreSQL과 MySQL에 맞게 조절)
-    if 'postgresql' in ASYNC_SQLALCHEMY_DATABASE_URL:
-        await session.execute(text('SET session_replication_role = REPLICA;'))
-    elif 'mysql' in ASYNC_SQLALCHEMY_DATABASE_URL:
-        await session.execute(text('SET foreign_key_checks = 0;'))
+    if "postgresql" in ASYNC_SQLALCHEMY_DATABASE_URL:
+        await session.execute(text("SET session_replication_role = REPLICA;"))
+    elif "mysql" in ASYNC_SQLALCHEMY_DATABASE_URL:
+        await session.execute(text("SET foreign_key_checks = 0;"))
 
     # 2. 모든 테이블의 데이터를 삭제
     for table in reversed(Base.metadata.sorted_tables):
         await session.execute(table.delete())
 
     # 3. 외래 키 제약조건을 다시 활성화
-    if 'postgresql' in ASYNC_SQLALCHEMY_DATABASE_URL:
-        await session.execute(text('SET session_replication_role = DEFAULT;'))
-    elif 'mysql' in ASYNC_SQLALCHEMY_DATABASE_URL:
-        await session.execute(text('SET foreign_key_checks = 1;'))
+    if "postgresql" in ASYNC_SQLALCHEMY_DATABASE_URL:
+        await session.execute(text("SET session_replication_role = DEFAULT;"))
+    elif "mysql" in ASYNC_SQLALCHEMY_DATABASE_URL:
+        await session.execute(text("SET foreign_key_checks = 1;"))
 
     await session.commit()  # 변경 사항을 적용
