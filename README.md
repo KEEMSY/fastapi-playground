@@ -6,7 +6,7 @@
 
 ```SHELL
 # docker-compose.yml 파일을 사용하여 FastAPI 앱을 실행한다.
-docker-compose up -d
+docker-compose -f docker-compose.dev.yml up -d
 ```
 - FastAPI 앱이 실행되면, http://localhost:7777/docs 에서 API 문서를 확인할 수 있다.
 

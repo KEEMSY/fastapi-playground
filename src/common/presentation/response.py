@@ -11,10 +11,10 @@ class ResultCode(Enum):
     ERROR = ("error", "에러가 발생했습니다.")
     VALIDATION_ERROR = ("validation_error", "입력값이 올바르지 않습니다.")
     NOT_FOUND = ("not_found", "요청한 리소스를 찾을 수 없습니다.")
+    FORBIDDEN = ("forbidden", "권한이 없습니다.")
     UNAUTHORIZED = ("unauthorized", "인증이 필요합니다.")
     SERVER_ERROR = ("server_error", "서버 오류가 발생했습니다.")
     DATABASE_ERROR = ("database_error", "데이터베이스 오류가 발생했습니다.")
-
     def __init__(self, code: str, message: str):
         self._code = code
         self._message = message
@@ -63,17 +63,23 @@ class BaseErrorResponse(BaseModel):
     message: str = Field(description="에러 메세지를 반환합니다.")
     status_code: int = Field(description="HTTP 상태 코드")
 
-    class ErrorResponse(BaseModel):
-        """일반적인 에러 응답"""
-        result: str = Field(default=ResultCode.ERROR.code)
-        message: str = Field(default=ResultCode.ERROR.message)
-        status_code: int = Field(default=500)
-        
+    class BadRequestResponse(BaseModel):
+        """잘못된 요청 파라미터 에러 응답"""
+        result: str = Field(default=ResultCode.VALIDATION_ERROR.code)
+        message: str = Field(default=ResultCode.VALIDATION_ERROR.message)
+        status_code: int = Field(default=400)
+
     class UnauthorizedResponse(BaseModel):
         """인증 실패 에러 응답"""
         result: str = Field(default=ResultCode.UNAUTHORIZED.code)
         message: str = Field(default=ResultCode.UNAUTHORIZED.message)
         status_code: int = Field(default=401)
+
+    class ForbiddenResponse(BaseModel):
+        """권한 없음 에러 응답"""
+        result: str = Field(default=ResultCode.FORBIDDEN.code)
+        message: str = Field(default=ResultCode.FORBIDDEN.message)
+        status_code: int = Field(default=403)
 
     class NotFoundResponse(BaseModel):
         """리소스를 찾을 수 없는 경우의 에러 응답"""
@@ -85,7 +91,7 @@ class BaseErrorResponse(BaseModel):
         """잘못된 요청 파라미터 에러 응답"""
         result: str = Field(default=ResultCode.VALIDATION_ERROR.code)
         message: str = Field(default=ResultCode.VALIDATION_ERROR.message)
-        status_code: int = Field(default=400)
+        status_code: int = Field(default=422)
     
     class ServerErrorResponse(BaseModel):
         """서버 내부 에러 응답"""
