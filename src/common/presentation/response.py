@@ -44,6 +44,9 @@ class BaseResponse(BaseModel, Generic[T]):
     data: Optional[T] = Field(
         default=None, description="작업 결과 데이터를 반환합니다."
     )
+    metadata: Optional[dict] = Field(
+        default=None, description="추가 메타데이터를 반환합니다."
+    )
 
 class BaseErrorResponse(BaseModel):
     """기본 에러 응답 클래스
@@ -105,6 +108,3 @@ class BaseErrorResponse(BaseModel):
         message: str = Field(default=ResultCode.DATABASE_ERROR.message)
         status_code: int = Field(default=500)
 
-
-
-    
