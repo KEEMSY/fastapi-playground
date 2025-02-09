@@ -8,6 +8,8 @@ from src.domains.async_example.presentation import no_login_router as async_exam
 from src.domains.question import router as question_router
 from src.domains.answer import router as answer_router
 from src.domains.user import router as user_router
+from src.domains.standard.presentation.standard_v1 import router_v1 as standard_router
+from src.domains.standard.presentation.standard_v2 import router_v2 as standard_router_v2
 from src.exceptions import PLException, BLException, DLException
 
 app = FastAPI()
@@ -30,6 +32,9 @@ app.include_router(question_router.router)
 app.include_router(answer_router.router)
 app.include_router(user_router.router)
 
+# 표준 형식 테스트용 API
+app.include_router(standard_router)
+app.include_router(standard_router_v2)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
