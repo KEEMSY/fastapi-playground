@@ -44,7 +44,9 @@ def sync_test():
     
     logger.info("Test API")
     return BaseResponse(
-        data=StandardResponse(message="test"),
+        data=StandardResponse(
+            message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})"
+        ),
     )
 
 
@@ -65,7 +67,9 @@ async def async_test():
     
     logger.info("Test API")
     return BaseResponse(
-        data=StandardResponse(message="test"),
+        data=StandardResponse(
+            message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})"
+        ),
     )
 
 
@@ -96,7 +100,9 @@ def sync_test_with_await(
     logger.info("Done")
     
     return BaseResponse(
-        data=StandardResponse(message="test"),
+        data=StandardResponse(
+            message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})"
+        ),
     )
     
 @router_v1.get(
@@ -130,14 +136,16 @@ async def async_test_with_await(
     )
     
     return BaseResponse(
-        data=StandardResponse(message=f"test from worker {worker_id}"),
+        data=StandardResponse(
+            message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})"
+        ),
     )
 
 @router_v1.get(
     "/async-test-with-await-with-sync",
     response_model=BaseResponse[StandardResponse],
     summary="비동기 메서드 내 동기 대기 응답을 반환하는 API",
-    description="비동기 메서드 내 동기 대기 응답을 사용하는 경우, 이벤트 루프를 블로킹하여 비동기 효과를 무효화 및 워커 프로세스의 이점을 누릴 수 없음"
+    description="비동기 메서드 내 동기 대기 응답을 사용하는 경우, 메인 스레드를 블로킹하여 비동기 효과를 무효화할 수 있습니다"
 )
 async def async_test_with_await_with_sync(
     timeout: int = Query(
@@ -165,5 +173,7 @@ async def async_test_with_await_with_sync(
     )
     
     return BaseResponse(
-        data=StandardResponse(message=f"test from worker {worker_id}"),
+        data=StandardResponse(
+            message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})"
+        ),
     )
