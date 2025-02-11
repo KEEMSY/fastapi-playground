@@ -25,7 +25,11 @@ if config.config_file_name is not None:
 # sqlalchemy.url 설정은 컨테이너(도커)주소로 관리가 되지 않아 실제 주소를 작성하였음. 24.05.19
 if not config.get_main_option("sqlalchemy.url"):
     config.set_main_option("sqlalchemy.url", "mysql+pymysql://{username}:{password}@{host}:{port}/{db_name}".format(
-        username="root", password="test", host="localhost", port="13306", db_name="fastapi_playground"
+        username="root", 
+        password="test", 
+        host="db",  # localhost 대신 docker-compose 서비스 이름 사용
+        port="3306", # 도커 내부 포트 사용
+        db_name="fastapi_playground"
     ))
 
     # For TestDB

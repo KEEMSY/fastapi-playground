@@ -11,18 +11,32 @@ services:
       - "7777:8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT}
-      SYNC_SQLALCHEMY_DATABASE_URL: ${SYNC_SQLALCHEMY_DATABASE_URL}
-      ASYNC_SQLALCHEMY_DATABASE_URL: ${ASYNC_SQLALCHEMY_DATABASE_URL}
+      SYNC_SQLALCHEMY_DATABASE_URL: mysql+pymysql://root:test@db:3306/fastapi_playground
+      ASYNC_SQLALCHEMY_DATABASE_URL: mysql+asyncmy://root:test@db:3306/fastapi_playground
       REDIS_URL: ${REDIS_URL}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      DATABASE_URL: mysql+pymysql://root:test@db:3306/fastapi_playground
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: fastapi_playground
 
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: on-failure
     networks:
       - fastapi_network
-
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50' # CPU 사용량을 50%로 제한
+          memory: 512M # 메모리 사용량을 512MB로 제한
+        reservations:
+          cpus: '0.25' # 최소 25%의 CPU 보장
+          memory: 256M # 최소 256MB의 메모리 보장
   db:
     container_name: dev_mysql
     image: mysql:8.0
@@ -30,14 +44,19 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     environment:
-      MYSQL_ROOT_PASSWORD: test  # Set the root password here
-      MYSQL_DATABASE: fastapi_playground  # Optional: Define a database to be created
-      MYSQL_USER: fastapi_user  # Define a regular user (not root)
-      MYSQL_PASSWORD: test  # Set password for the regular user
+      MYSQL_ROOT_PASSWORD: test # Set the root password here
+      MYSQL_DATABASE: fastapi_playground # Optional: Define a database to be created
+      MYSQL_USER: fastapi_user # Define a regular user (not root)
+      MYSQL_PASSWORD: test # Set password for the regular user
     ports:
       - "13306:3306"
     networks:
       - fastapi_network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     container_name: dev_redis
@@ -52,6 +71,7 @@ services:
       - fastapi_network
 networks:
   fastapi_network:
+
 
 volumes:
   mysql_data:

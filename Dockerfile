@@ -1,7 +1,7 @@
 FROM python:3.9.6-slim-buster
 
 RUN apt-get update && \
-    apt-get install -y gcc libpq-dev && \
+    apt-get install -y gcc libpq-dev && apt-get install -y procps && \
     apt clean && \
     rm -rf /var/cache/apt/*
 
@@ -16,7 +16,7 @@ RUN pip install -U pip && \
 COPY . /home/fastAPI-Playground
 # Delete contents of alembic/versions if it exists
 RUN if [ -d "/home/fastAPI-Playground/alembic/versions" ]; then \
-        rm -rf /home/fastAPI-Playground/alembic/versions/*; \
+    rm -rf /home/fastAPI-Playground/alembic/versions/*; \
     fi
 
 
@@ -31,4 +31,5 @@ RUN useradd -m -d /home/fastAPI-Playground -s /bin/bash app \
 USER app
 WORKDIR /home/fastAPI-Playground
 
-CMD ["bash", "./scripts/start-dev.sh"]
+# CMD ["bash", "./scripts/start-dev.sh"]
+CMD ["bash", "./scripts/start-prod.sh"]
