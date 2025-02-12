@@ -177,3 +177,40 @@ async def async_test_with_await_with_sync(
             message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})"
         ),
     )
+
+@router_v1.get(
+    "/async-test-with-await-with-async",
+    response_model=BaseResponse[StandardResponse],
+    summary="비동기 메서드 내 비동기 대기 응답을 반환하는 API",
+    description="비동기 메서드 내 동기 대기 응답을 사용하는 경우, 메인 스레드를 블로킹하여 비동기 효과를 무효화할 수 있습니다"
+)
+async def async_test_with_await_with_async(
+    timeout: int = Query(
+        default=1,
+        ge=1,
+        le=10,
+        description="대기 시간 (초)"
+    )
+):
+    process_id = os.getpid()
+    worker_id = multiprocessing.current_process().name
+    thread_id = threading.current_thread().name
+    
+    logger.info(
+        f"Request received - Process ID: {process_id}, "
+        f"Worker: {worker_id}, Thread: {thread_id}"
+    )
+    
+    logger.info(f"Waiting for {timeout} seconds")
+    await asyncio.sleep(timeout)
+    
+    logger.info(
+        f"Done - Process ID: {process_id}, "
+        f"Worker: {worker_id}, Thread: {thread_id}"
+    )
+    
+    return BaseResponse(
+        data=StandardResponse(
+            message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})"
+        ),
+    )

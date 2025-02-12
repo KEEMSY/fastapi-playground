@@ -26,21 +26,21 @@ echo "- Port: $PORT"
 echo "- Log Level: $LOG_LEVEL"
 
 # Run database migrations
-echo "Running database migrations..."
-echo "1. Checking current migration status..."
-alembic current
+# echo "Running database migrations..."
+# echo "1. Checking current migration status..."
+# alembic current
 
-echo "2. Downgrading all migrations..."
-alembic downgrade base || true  # 실패해도 계속 진행
+# echo "2. Downgrading all migrations..."
+# alembic downgrade base || true  # 실패해도 계속 진행
 
-echo "3. Removing existing migration files..."
-rm -f alembic/versions/*.py || true  # 실패해도 계속 진행
+# echo "3. Removing existing migration files..."
+# rm -f alembic/versions/*.py || true  # 실패해도 계속 진행
 
-echo "4. Creating new migration..."
-alembic revision --autogenerate -m "create initial tables"
+# echo "4. Creating new migration..."
+# alembic revision --autogenerate -m "create initial tables"
 
-echo "5. Upgrading to latest migration..."
-alembic upgrade head
+# echo "5. Upgrading to latest migration..."
+# alembic upgrade head
 
 # Start Uvicorn
 exec uvicorn \
