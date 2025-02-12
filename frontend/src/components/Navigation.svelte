@@ -22,11 +22,17 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 {#if $is_login }
                     <li class="nav-item">
-                        <a use:link href="/user-login" class="nav-link" on:click={() => {
+                        <a use:link class="nav-link" href="/question-create">질문 등록</a>
+                    </li>
+                    <li class="nav-item">
+                        <a use:link class="nav-link" href="/">{$username}</a>
+                    </li>
+                    <li class="nav-item">
+                        <a use:link class="nav-link" href="/user-login" on:click={() => {
                             $access_token = ''
                             $username = ''
                             $is_login = false
-                        }}>로그아웃 ({$username})</a>
+                        }}>로그아웃</a>
                     </li>
                 {:else}
                     <li class="nav-item">
@@ -36,6 +42,11 @@
                         <a use:link class="nav-link" href="/user-login">로그인</a>
                     </li>
                 {/if}
+                <li class="nav-item">
+                    <a use:link class="nav-link" href="/performance-test">
+                        <span class="badge bg-info">성능 테스트</span>
+                    </a>
+                </li>
             </ul>
         </div>
     </div>
