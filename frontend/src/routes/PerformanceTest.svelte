@@ -8,8 +8,9 @@
     let isRunning = false;
     let currentScenario = null;
     let progress = 0;
-    let chart = null;
+    let chart;
     let chartView = 'basic';
+    let filteredResults = [];
     
     function initChart() {
         const ctx = document.getElementById('performanceChart');
@@ -18,75 +19,13 @@
         if (chart) {
             chart.destroy();
         }
-        
-        chart = new Chart(ctx, {
-            type: 'bar',
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                indexAxis: 'x',
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '시나리오별 성능 비교',
-                        font: { size: 16 }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const metrics = filteredResults[context.dataIndex];
-                                const value = context.raw.toFixed(2);
-                                return [
-                                    `${context.dataset.label}: ${value}초`,
-                                    `효율성: ${metrics.efficiency.toFixed(1)}%`,
-                                    `요청 수: ${metrics.totalRequests}개`,
-                                    `개별 요청 평균: ${(metrics.averageRequestTime / 1000).toFixed(2)}초`
-                                ];
-                            }
-                        }
-                    },
-                    legend: {
-                        position: 'top'
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: '시나리오',
-                            font: { size: 12 }
-                        },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: '실행 시간 (초)',
-                            font: { size: 12 }
-                        },
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    }
 
-    function updateChart() {
-        if (!chart) {
-            initChart();
-        }
-        
-        if (!chart || testResults.length === 0) return;
-
-        const filteredResults = testResults.filter(result => 
+        filteredResults = testResults.filter(result => 
             chartView === 'basic' ? 
-                result.scenarioName.includes('(3회 반복)') : 
+                result.scenarioName.includes('반복') : 
                 result.scenarioName.includes('50개')
         );
-
+        
         const chartData = {
             labels: filteredResults.map(r => {
                 const name = r.scenarioName.split(':')[1].trim();
@@ -119,11 +58,121 @@
                 }
             ]
         };
+        
+        chart = new Chart(ctx, {
+            type: 'bar',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                indexAxis: 'x',
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { size: 14 },
+                        bodyFont: { size: 13 },
+                        callbacks: {
+                            beforeTitle: function(context) {
+                                const dataIndex = context[0].dataIndex;
+                                const result = filteredResults[dataIndex];
+                                return result?.scenarioName || '';
+                            },
+                            label: function(context) {
+                                const dataIndex = context.dataIndex;
+                                const result = filteredResults[dataIndex];
+                                if (!result) return '';
 
-        chart.data = chartData;
+                                if (context.datasetIndex === 0) {
+                                    return [
+                                        `실제 실행 시간: ${(result.totalTime / 1000).toFixed(2)}초`,
+                                        `총 요청 수: ${result.totalRequests}개`,
+                                        `효율성: ${result.efficiency.toFixed(1)}%`,
+                                        `반복 횟수: ${result.iterations}회`
+                                    ];
+                                } else {
+                                    return [`이론적 실행 시간: ${(result.totalTheoreticalTime / 1000).toFixed(2)}초`];
+                                }
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: { size: 12 }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: chartView === 'basic' ? 
+                            '기본 시나리오 성능 비교 (3회 반복)' : 
+                            '대규모 동시 요청 성능 비교 (50개 요청)',
+                        font: { size: 16 }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '시나리오',
+                            font: { size: 12 }
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '실행 시간 (초)',
+                            font: { size: 12 }
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    function updateChart() {
+        if (!chart || testResults.length === 0) {
+            initChart();
+            return;
+        }
+
+        filteredResults = testResults.filter(result => 
+            chartView === 'basic' ? 
+                result.scenarioName.includes('반복') : 
+                result.scenarioName.includes('50개')
+        );
+
+        chart.data.labels = filteredResults.map(r => {
+            const name = r.scenarioName.split(':')[1].trim();
+            return name
+                .replace(' (3회 반복)', '')
+                .replace(' (50개)', '')
+                .replace('비동기 메서드 + ', '')
+                .replace('동기 메서드 + ', '');
+        });
+
+        chart.data.datasets[0].data = filteredResults.map(r => r.totalTime / 1000);
+        chart.data.datasets[1].data = filteredResults.map(r => r.totalTheoreticalTime / 1000);
+        chart.data.datasets[0].backgroundColor = filteredResults.map(r => {
+            if (r.efficiency >= 90) return 'rgba(40, 167, 69, 0.7)';
+            if (r.efficiency >= 50) return 'rgba(255, 193, 7, 0.7)';
+            return 'rgba(220, 53, 69, 0.7)';
+        });
+
         chart.options.plugins.title.text = chartView === 'basic' ? 
             '기본 시나리오 성능 비교 (3회 반복)' : 
             '대규모 동시 요청 성능 비교 (50개 요청)';
+
         chart.update();
     }
 
@@ -155,7 +204,9 @@
     }
 
     onMount(() => {
-        initChart();
+        if (testResults.length > 0) {
+            initChart();
+        }
     });
 
     $: if (testResults.length > 0) {
@@ -323,17 +374,18 @@
             </div>
             <div class="card-body">
                 <ul class="mb-0">
-                    <li><strong>반복</strong>: 현재 실행 회차 (1~5회)</li>
+                    <li><strong>반복</strong>: 현재 실행 회차</li>
                     <li><strong>요청 유형</strong>: API 엔드포인트의 처리 방식</li>
                     <li><strong>대기 시간</strong>: 서버에 설정된 의도적인 대기 시간</li>
-                    <li><strong>실제 소요 시간</strong>: 요청부터 응답까지 실제 걸린 시간</li>
+                    <li><strong>실제 소요 시간</strong>: 요청부터 응답까지 실제 걸린 시간(대기 시간 + 네트워크 지연 + 서버 처리 시간 등이 포함)</li>
                     <li><strong>반복 내 총시간</strong>: 해당 반복의 10개 요청이 모두 완료되는데 걸린 시간</li>
+                    <li><strong>개별 요청 평균</strong>: 각 요청이 완료되는데 걸린 시간의 평균값 (병렬 처리 시 총시간보다 작음)</li>
                     <li><strong>상태</strong>: 요청의 성공/실패 여부</li>
                 </ul>
             </div>
         </div>
 
-        <div class="accordion" id="testResults">
+        <div class="accordion mb-5" id="testResults">
             {#each testResults as result, i}
                 <div class="accordion-item">
                     <h2 class="accordion-header">

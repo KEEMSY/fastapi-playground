@@ -61,7 +61,7 @@ async function callEndpoint(endpoint, timeout = null) {
 // 성능 비교를 위한 시나리오 정의
 export const TestScenarios = [
     {
-        name: "시나리오 1: 비동기 메서드 + 비동기 대기 (3회 반복)",
+        name: "시나리오 1: 비동기 메서드 + 비동기 대기 (1 Loop 당 요청 10회, 3 Loop 반복)",
         description: "비동기 메서드에서 비동기 대기를 사용하는 경우 (이상적인 비동기 처리)",
         endpoints: [
             { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 1 },
@@ -78,7 +78,7 @@ export const TestScenarios = [
         iterations: 3
     },
     {
-        name: "시나리오 2: 비동기 메서드 + 동기 대기 (3회 반복)",
+        name: "시나리오 2: 비동기 메서드 + 동기 대기 (1 Loop 당 요청 10회, 3 Loop 반복)",
         description: "비동기 메서드에서 동기 대기를 사용하는 경우 (스레드 블로킹)",
         endpoints: [
             { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 1 },
@@ -95,7 +95,7 @@ export const TestScenarios = [
         iterations: 3
     },
     {
-        name: "시나리오 3: 동기 메서드 + 동기 대기 (3회 반복)",
+        name: "시나리오 3: 동기 메서드 + 동기 대기 (1 Loop 당 요청 10회, 3 Loop 반복)",
         description: "동기 메서드에서 동기 대기를 사용하는 경우 (전통적인 블로킹 방식)",
         endpoints: [
             { type: EndpointType.SYNC_WITH_WAIT, timeout: 1 },
@@ -112,27 +112,30 @@ export const TestScenarios = [
         iterations: 3
     },
     {
-        name: "시나리오 4: 대규모 동시 요청 (비동기+비동기, 50개)",
-        description: "단일 시점에 50개의 요청을 비동기 방식으로 처리 (이상적인 비동기 처리)",
-        endpoints: Array(50).fill().map(() => (
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 2 }
-        )),
+        name: "시나리오 4: 대규모 동시 요청 (비동기 메서드 + 비동기 대기, 50개)",
+        description: "단일 시점에 50개의 요청을 비동기 메서드 + 비동기 대기 방식으로 처리 (이상적인 비동기 처리)",
+        endpoints: Array(50).fill().map((_, index) => ({
+            type: EndpointType.ASYNC_WITH_ASYNC_WAIT,
+            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
+        })),
         iterations: 1
     },
     {
-        name: "시나리오 5: 대규모 동시 요청 (비동기+동기, 50개)",
-        description: "단일 시점에 50개의 요청을 비동기+동기 방식으로 처리 (스레드 블로킹)",
-        endpoints: Array(50).fill().map(() => (
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 2 }
-        )),
+        name: "시나리오 5: 대규모 동시 요청 (비동기 메서드 + 동기 대기, 50개)",
+        description: "단일 시점에 50개의 요청을 비동기 메서드 + 동기 대기 방식으로 처리 (스레드 블로킹)",
+        endpoints: Array(50).fill().map((_, index) => ({
+            type: EndpointType.ASYNC_WITH_SYNC_WAIT,
+            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
+        })),
         iterations: 1
     },
     {
-        name: "시나리오 6: 대규모 동시 요청 (동기+동기, 50개)",
-        description: "단일 시점에 50개의 요청을 동기 방식으로 처리 (전통적인 블로킹 방식)",
-        endpoints: Array(50).fill().map(() => (
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 2 }
-        )),
+        name: "시나리오 6: 대규모 동시 요청 (동기 메서드 + 동기 대기, 50개)",
+        description: "단일 시점에 50개의 요청을 동기 메서드 + 동기 대기 방식으로 처리 (전통적인 블로킹 방식)",
+        endpoints: Array(50).fill().map((_, index) => ({
+            type: EndpointType.SYNC_WITH_WAIT,
+            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
+        })),
         iterations: 1
     }
 ];
@@ -185,7 +188,8 @@ export async function runScenario(scenarioConfig) {
         totalTheoreticalTime,                           // 전체 이론적 시간 (ms)
         endpointResults: allResults,
         averageIterationTime: iterationTimes.reduce((acc, time) => acc + time, 0) / scenarioConfig.iterations,  // 반복당 평균 시간 (전체 요청 세트)
-        averageRequestTime: allResults.reduce((acc, result) => acc + result.time, 0) / allResults.length,  // 개별 요청의 평균 시간
+        averageRequestTime: allResults.reduce((acc, result) => acc + result.time, 0) / allResults.length,  // 개별 요청의 실제 소요 시간 평균 (네트워크 지연 포함)
+        averageTimeout: allResults.reduce((acc, result) => acc + (result.timeout * 1000), 0) / allResults.length,  // 각 요청의 대기 시간 평균 (서버 설정 값)
         successRate: allResults.filter(r => r.success).length / allResults.length,
         iterations: scenarioConfig.iterations,
         totalRequests: scenarioConfig.endpoints.length * scenarioConfig.iterations,
