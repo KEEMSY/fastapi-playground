@@ -14,3 +14,14 @@ class StandardResponse(BaseModel):
             "description": "Standard API response format"
         }
     )
+
+class DatabaseSessionInfo(BaseModel):
+    total_connections: int
+    active_connections: int
+    threads_connected: str
+    threads_running: str
+    max_used_connections: str
+
+class StandardDbResponse(BaseModel):
+    message: str
+    session_info: DatabaseSessionInfo
