@@ -4,7 +4,7 @@ from typing import Dict, Any
 
 import docker  # 라이브러리를 설치하여, requirements.txt에 업데이트 필요
 
-from tests.config import get_test_settings
+from tests.config import get_test_settings, TestSettings
 
 
 def is_container_ready(container):
@@ -68,21 +68,11 @@ def wait_for_postgres(container, timeout=30):
     return False
 
 
-def start_database_container() -> Any:
-    settings = get_test_settings()
-    client = docker.from_env()
-
-    # 기존 컨테이너 확인 및 제거
-    try:
-        existing_container = client.containers.get("test-db")
-        print(f"Removing existing container: {existing_container.id}")
-        existing_container.remove(force=True)
-    except docker.errors.NotFound:
-        print("No existing container found")
-
-    container_config = {
-        "image": "postgres:latest",
-        "name": "test-db",
+def get_container_config(settings: TestSettings) -> Dict[str, Any]:
+    """컨테이너 설정을 반환하는 함수"""
+    return {
+        "image": settings.POSTGRES_IMAGE, 
+        "name": settings.DOCKER_CONTAINER_NAME,
         "detach": True,
         "environment": {
             "POSTGRES_USER": settings.POSTGRES_USER,
@@ -91,24 +81,37 @@ def start_database_container() -> Any:
         },
         "ports": {"5432/tcp": settings.POSTGRES_PORT},
         "healthcheck": {
-            "test": ["CMD-SHELL", "pg_isready -U root -d test-project"],
-            "interval": 1000000000,
-            "timeout": 1000000000,
-            "retries": 5,
-            "start_period": 1000000000,
+            "test": ["CMD-SHELL", f"pg_isready -U {settings.POSTGRES_USER} -d {settings.POSTGRES_DB}"],
+            "interval": settings.HEALTHCHECK_INTERVAL,  
+            "timeout": settings.HEALTHCHECK_TIMEOUT,    
+            "retries": settings.HEALTHCHECK_RETRIES,    
+            "start_period": settings.HEALTHCHECK_START_PERIOD, 
         },
+        "network": settings.DOCKER_NETWORK_NAME
     }
 
+
+def start_database_container() -> Any:
+    settings = get_test_settings()
+    client = docker.from_env()
+
     try:
-        container = client.containers.run(**container_config)
+        existing_container = client.containers.get(settings.DOCKER_CONTAINER_NAME)
+        print(f"Removing existing container: {existing_container.id}")
+        existing_container.remove(force=True)
+    except docker.errors.NotFound:
+        print("No existing container found")
+
+    try:
+        container = client.containers.run(**get_container_config(settings))
         print(f"Started new container: {container.id}")
 
         if not wait_for_postgres(container):
             container.stop()
-            raise Exception("Database failed to start")
+            raise Exception(f"Database failed to start: {settings.DOCKER_CONTAINER_NAME}")
 
         return container
 
     except Exception as e:
-        print(f"Error starting container: {e}")
+        print(f"Error starting container {settings.DOCKER_CONTAINER_NAME}: {e}")
         raise
