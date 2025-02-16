@@ -12,7 +12,7 @@ from src.common.presentation.response import BaseErrorResponse, BaseResponse
 from src.common.presentation.router import create_versioned_router
 from src.domains.standard.presentation.schemas.standard import StandardResponse, StandardDbResponse, DatabaseSessionInfo
 from src.utils import Logging
-from src.database import get_db, get_async_db, async_engine
+from src.database.database import get_db, get_async_db, async_engine
 
 # V1 라우터 생성
 router_v1 = create_versioned_router(

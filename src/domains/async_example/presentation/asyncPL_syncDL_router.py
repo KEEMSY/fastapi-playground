@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from src.database import get_db
+from src.database.database import get_db
 from src.domains.sync_example.business import service as example_service
 from src.domains.sync_example.business.schemas import SyncExampleListSchema
 from src.domains.sync_example.presentation.schemas import SyncExampleListResponse

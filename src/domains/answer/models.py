@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, String, Table
 from sqlalchemy.orm import relationship
 
-from src.database import Base
+from src.database.database import Base
 
 """
 question = relationship("Question", backref="answers")

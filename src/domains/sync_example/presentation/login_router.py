@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from src.database import get_db
+from src.database.database import get_db
 from src.domains.sync_example.business import service as example_service
 from src.domains.sync_example.business.schemas import SyncExampleSchema, SyncExampleListSchema
 from src.domains.sync_example.presentation.schemas import SyncExampleResponse, CreateSyncExample, \

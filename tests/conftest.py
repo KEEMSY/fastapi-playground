@@ -12,7 +12,7 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from starlette.testclient import TestClient
 
-from src.database import Base, get_db, get_async_db
+from src.database.database import Base, get_db, get_async_db
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker

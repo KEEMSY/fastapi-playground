@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from src.database import get_async_db
+from src.database.database import get_async_db
 from src.domains.async_example.business import async_example_service
 from src.domains.async_example.business.schemas import ASyncExampleSchemaList
 from src.domains.async_example.constants import ErrorCode

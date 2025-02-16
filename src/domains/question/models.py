@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table
 from sqlalchemy.orm import relationship
 
-from src.database import Base
+from src.database.database import Base
 
 
 question_voter = Table(

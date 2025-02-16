@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from src.database import get_db, get_async_db
+from src.database.database import get_db, get_async_db
 from src.domains.question import schemas as question_schema, service as question_service
 from src.domains.user.schemas import User
 from src.domains.user.router import get_current_user_with_async

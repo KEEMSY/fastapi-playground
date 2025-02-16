@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import Integer, Column, String, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship, Mapped
 
-from src.database import Base
+from src.database.database import Base
 from src.domains.user.models import User  # Adjust the path according to your project structure
 
 

@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from src.database import Base
+from src.database.database import Base
 ### 삭제되면 안됨 시작 ###
 from src.domains.user.models import User
 from src.domains.question.models import Question

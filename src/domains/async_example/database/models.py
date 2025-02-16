@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import Column, Integer, String, ForeignKey, func, DateTime
 from sqlalchemy.orm import Mapped, relationship
 
-from src.database import Base
+from src.database.database import Base
 
 
 class AsyncExample(Base):

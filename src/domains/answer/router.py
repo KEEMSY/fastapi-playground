@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
 
-from src.database import get_db
+from src.database.database import get_db
 from src.domains.answer.schemas import AnswerCreate, Answer, AnswerUpdate, AnswerDelete, AnswerVote
 from src.domains.answer import service as answer_service
 from src.domains.question import service as question_service

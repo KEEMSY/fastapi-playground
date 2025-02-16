@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from starlette import status
 
-from src.database import get_db, get_async_db
+from src.database.database import get_db, get_async_db
 from src.domains.user.models import User
 from src.domains.user.schemas import UserCreate, Token
 from src.domains.user import service as user_service

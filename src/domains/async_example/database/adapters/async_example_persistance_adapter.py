@@ -2,7 +2,7 @@ from abc import ABC
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import AsyncTransactionManager, async_transactional
+from src.database.database import AsyncTransactionManager, async_transactional
 from src.domains.async_example.business.ports.async_example_repository import AsyncExampleRepository
 from src.domains.async_example.business.schemas import AsyncExampleSchema, RelatedAsyncExampleSchema
 from src.domains.async_example.database.async_example_rdb import AsyncExampleCRUD
