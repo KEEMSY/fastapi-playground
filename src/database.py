@@ -44,45 +44,61 @@ Base = declarative_base(metadata=metadata)
 
 logger = logging.getLogger(__name__)
 
-# async_engine = create_async_engine(ASYNC_SQLALCHEMY_DATABASE_URL, echo=True)
-async_engine = create_async_engine(ASYNC_SQLALCHEMY_DATABASE_URL)
+# 비동기 엔진 설정 수정
+async_engine = create_async_engine(
+    ASYNC_SQLALCHEMY_DATABASE_URL,
+    pool_size=20,           # 기본 풀 크기 증가
+    max_overflow=30,        # 최대 초과 연결 수 증가
+    pool_timeout=10,        # 타임아웃 감소
+    pool_recycle=3600,      # 커넥션 재활용 시간
+    pool_pre_ping=True,     # 연결 상태 확인
+    echo=False
+)
 
+# 동기 엔진 설정 수정
+engine = create_engine(
+    SYNC_SQLALCHEMY_DATABASE_URL,
+    pool_size=20,           # 기본 풀 크기 증가
+    max_overflow=30,        # 최대 초과 연결 수 증가
+    pool_timeout=10,        # 타임아웃 감소
+    pool_recycle=3600,      # 커넥션 재활용 시간
+    pool_pre_ping=True,     # 연결 상태 확인
+    echo=False
+)
 
 async def get_async_db():
     retry_count = 0
-    while retry_count <= 5:
+    while retry_count <= 3:  # 재시도 횟수 감소
         async with AsyncSession(bind=async_engine) as db:
             try:
                 yield db
-                break  # If the session was successful, exit the loop
+                break
             except SQLAlchemyError as e:
                 await db.rollback()
                 logger.error(f"Async database error: {e}, retrying...")
-                await asyncio.sleep(1.5)  # Wait before retrying
+                await asyncio.sleep(0.5)  # 재시도 대기 시간 단축
                 retry_count += 1
-    if retry_count > 5:
+    if retry_count > 3:
         logger.error("Maximum retry attempts reached, failing.")
 
 
-engine = create_engine(SYNC_SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 def get_db():
     retry_count = 0
-    while retry_count <= 5:
+    while retry_count <= 3:  # 재시도 횟수 감소
         db = SessionLocal()
         try:
             yield db
-            break  # If the session was successful, exit the loop
+            break
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Database error: {e}, retrying...")
-            time.sleep(1.5)  # Wait before retrying
+            time.sleep(0.5)  # 재시도 대기 시간 단축
             retry_count += 1
         finally:
             db.close()
-    if retry_count > 5:
+    if retry_count > 3:
         logger.error("Maximum retry attempts reached, failing.")
 
 
