@@ -43,9 +43,8 @@
                     </li>
                 {/if}
                 <li class="nav-item">
-                    <a use:link class="nav-link" href="/performance-test">
-                        <span class="badge bg-info">성능 테스트</span>
-                    </a>
+                    <a use:link href="/performance-test" class="btn btn-outline-primary">일반 성능 테스트</a>
+                    <a use:link href="/db-session-test" class="btn btn-outline-primary">DB 세션 테스트</a>
                 </li>
             </ul>
         </div>

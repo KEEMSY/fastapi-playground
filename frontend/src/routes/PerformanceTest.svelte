@@ -12,6 +12,9 @@
     let chartView = 'basic';
     let filteredResults = [];
     
+    // 일반 성능 테스트 시나리오만 필터링 (시나리오 1-6)
+    const generalScenarios = TestScenarios.slice(0, 6);
+    
     function initChart() {
         const ctx = document.getElementById('performanceChart');
         if (!ctx) return;
@@ -185,22 +188,29 @@
         return `${(value * 100).toFixed(1)}%`;
     }
 
-    async function runAllScenarios() {
+    async function runTests() {
+        if (isRunning) return;
+        
         isRunning = true;
         testResults = [];
+        progress = 0;
         
-        for (let i = 0; i < TestScenarios.length; i++) {
-            currentScenario = TestScenarios[i];
-            progress = (i / TestScenarios.length) * 100;
-            
-            const result = await runScenario(currentScenario);
-            testResults = [...testResults, result];
+        const totalScenarios = generalScenarios.length;
+        
+        try {
+            for (let i = 0; i < generalScenarios.length; i++) {
+                currentScenario = generalScenarios[i];
+                const result = await runScenario(generalScenarios[i]);
+                testResults = [...testResults, result];
+                progress = ((i + 1) / totalScenarios) * 100;
+            }
+        } catch (error) {
+            console.error('테스트 실행 중 오류:', error);
+        } finally {
+            isRunning = false;
+            currentScenario = null;
             updateChart();
         }
-        
-        progress = 100;
-        isRunning = false;
-        currentScenario = null;
     }
 
     onMount(() => {
@@ -259,7 +269,7 @@
             </div>
             <button 
                 class="btn btn-lg btn-primary mt-3" 
-                on:click={runAllScenarios} 
+                on:click={runTests} 
                 disabled={isRunning}>
                 {#if isRunning}
                     <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>

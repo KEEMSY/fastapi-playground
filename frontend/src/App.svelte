@@ -9,7 +9,7 @@
   import QuestionModify from "./routes/QuestionModify.svelte";
   import AnswerModify from "./routes/AnswerModify.svelte";
   import PerformanceTest from "./routes/PerformanceTest.svelte";
-
+  import DbSessionTest from "./routes/DbSessionTest.svelte";
   const routes = {
       '/': Home,
       '/detail/:question_id': Detail,
@@ -19,6 +19,7 @@
       '/question-modify/:question_id': QuestionModify,
       '/answer-modify/:answer_id': AnswerModify,
       '/performance-test': PerformanceTest,
+      '/db-session-test': DbSessionTest,
   }
 </script>
 
