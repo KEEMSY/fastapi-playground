@@ -12,27 +12,21 @@ HOST=${HOST:-0.0.0.0}
 PORT=${PORT:-8000}
 LOG_LEVEL=${LOG_LEVEL:-info}
 LOG_CONFIG=${LOG_CONFIG:-/home/fastAPI-Playground/logging.ini}
-WORKERS=${WORKERS:-1} # reload 모드에서는 1개의 워커만 사용
-RELOAD="--reload"
+WORKERS=${WORKERS:-1}
+RELOAD=${RELOAD:-true}  # 기본값을 true로 설정
 
 echo "Starting server with:"
 echo "- Workers: $WORKERS"
-echo "- Reload: $RELOAD"
+echo "- Reload: ${RELOAD}"
 echo "- Host: $HOST"
 echo "- Port: $PORT"
-
-# RELOAD가 true일 때만 --reload 옵션 추가
-if [ "$RELOAD" = "true" ]; then
-    RELOAD_OPT="--reload"
-else
-    RELOAD_OPT=""
-fi
 
 # Start Uvicorn with live reload
 exec uvicorn \
     "$APP_MODULE" \
     --workers $WORKERS \
-    $RELOAD_OPT \
+    --reload \
+    --reload-dir src \
     --proxy-headers \
     --host $HOST \
     --port $PORT \
