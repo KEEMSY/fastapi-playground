@@ -8,6 +8,7 @@ anyio==4.3.0
 async-asgi-testclient==1.4.11
 async-timeout==4.0.3
 asyncmy==0.2.9
+asyncpg==0.30.0
 attrs==25.1.0
 bcrypt==4.1.2
 black==24.3.0
@@ -43,6 +44,7 @@ platformdirs==4.2.0
 pluggy==1.4.0
 propcache==0.2.1
 psutil==6.1.1
+psycopg2-binary==2.9.10
 pyasn1==0.6.0
 pycparser==2.22
 pydantic==2.6.4
