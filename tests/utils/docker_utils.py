@@ -2,7 +2,8 @@ import os
 import time
 from typing import Dict, Any
 
-import docker  # 라이브러리를 설치하여, requirements.txt에 업데이트 필요
+import docker 
+import aioredis
 
 from tests.config import get_test_settings, TestSettings
 
@@ -91,8 +92,18 @@ def get_container_config(settings: TestSettings) -> Dict[str, Any]:
     }
 
 
+def ensure_network_exists(network_name: str):
+    """Docker 네트워크가 없으면 생성"""
+    client = docker.from_env()
+    try:
+        client.networks.get(network_name)
+    except docker.errors.NotFound:
+        client.networks.create(network_name)
+
+
 def start_database_container() -> Any:
     settings = get_test_settings()
+    ensure_network_exists(settings.DOCKER_NETWORK_NAME)  # 네트워크 확인/생성
     client = docker.from_env()
 
     try:
@@ -114,4 +125,53 @@ def start_database_container() -> Any:
 
     except Exception as e:
         print(f"Error starting container {settings.DOCKER_CONTAINER_NAME}: {e}")
+        raise
+
+
+def start_redis_container():
+    """Redis 컨테이너 시작"""
+    settings = get_test_settings()
+    client = docker.from_env()
+
+    # 기존 컨테이너 제거
+    try:
+        container = client.containers.get(settings.REDIS_CONTAINER_NAME)
+        container.remove(force=True)
+        print(f"Removed existing Redis container: {container.id}")
+    except docker.errors.NotFound:
+        print("No existing Redis container found")
+
+    # Redis 컨테이너 설정
+    container_config = {
+        "image": settings.REDIS_IMAGE,
+        "name": settings.REDIS_CONTAINER_NAME,
+        "ports": {f"6379/tcp": settings.REDIS_PORT},
+        "environment": {"REDIS_PASSWORD": settings.REDIS_PASSWORD},
+        "command": f"redis-server --requirepass {settings.REDIS_PASSWORD}",
+        "detach": True,
+        "network": settings.DOCKER_NETWORK_NAME
+    }
+
+    try:
+        container = client.containers.run(**container_config)
+        print(f"Started new Redis container: {container.id}")
+
+        # Redis 준비 대기
+        for i in range(30):
+            try:
+                redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+                redis.ping()
+                redis.close()
+                print("Redis is ready!")
+                break
+            except Exception as e:
+                if i == 29:  # 마지막 시도
+                    raise Exception(f"Redis failed to start: {e}")
+                time.sleep(1)
+                print(f"Waiting for Redis... (attempt {i+1}/30)")
+
+        return container
+
+    except Exception as e:
+        print(f"Error starting Redis container: {e}")
         raise
