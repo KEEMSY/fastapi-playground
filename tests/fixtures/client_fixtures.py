@@ -3,13 +3,6 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from fastapi.testclient import TestClient
 from src.main import app
-from tests.fixtures.db_fixtures import (
-    test_db_container, 
-    db_session, 
-    db_inspector, 
-    async_db_session, 
-    async_db_inspector
-)
 
 @pytest.fixture
 def client(db_session):
