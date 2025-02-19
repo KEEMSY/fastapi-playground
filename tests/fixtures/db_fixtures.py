@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
+import pytest_asyncio
 
 
 ########### 공통 ############
@@ -114,9 +115,61 @@ def db_inspector(db_session):
     return inspector
 
 
-########## 비동기 세션 ##########
+########## 비동기 세션 (디버깅이 필요함)##########
 
-@pytest.fixture(scope="session")
+# @pytest_asyncio.fixture(scope="function") -- 성공
+# @pytest_asyncio.fixture(scope="session") -- 실패
+# @pytest_asyncio.fixture # -- 성공 
+# async def async_db_session(test_db_container):
+#     """비동기 데이터베이스 세션 fixture"""
+#     settings = get_test_settings()
+#     async_engine = create_async_engine(
+#         settings.ASYNC_DATABASE_URL,
+#         pool_size=5,
+#         max_overflow=10,
+#         pool_timeout=30,
+#         pool_recycle=1800,
+#         pool_pre_ping=True,
+#         echo=True,
+#         future=True
+#     )
+
+#     # 세션 팩토리 생성
+#     async_session_factory = async_sessionmaker(
+#         async_engine,
+#         class_=AsyncSession,
+#         expire_on_commit=False,
+#         autocommit=False,
+#         autoflush=False
+#     )
+
+#     async with async_session_factory() as session:
+#         async with async_engine.begin() as conn:
+#             # uuid-ossp 확장 설치
+#             await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
+            
+#             # 테이블 생성
+#             await conn.run_sync(Base.metadata.create_all)
+
+#         try:
+#             yield session
+#         finally:
+#             await session.close()
+#             await async_engine.dispose()
+
+
+# @pytest_asyncio.fixture
+# async def async_db_inspector(async_db_session):
+#     """비동기 데이터베이스 검사를 위한 inspector fixture"""
+#     engine = async_db_session.get_bind()
+#     def get_inspector(sync_conn):
+#         return inspect(sync_conn)
+#     inspector = await engine.run_sync(get_inspector)
+#     return inspector
+
+
+###### 가능한 설정의 비동기 설정 ######
+@pytest_asyncio.fixture
 async def async_db_session(test_db_container):
     """비동기 데이터베이스 세션 fixture"""
     settings = get_test_settings()
@@ -130,47 +183,18 @@ async def async_db_session(test_db_container):
         echo=False
     )
 
-    print("\nRegistered models in Base.metadata (Async):")
-    for table in Base.metadata.tables:
-        print(f"- {table}")
+    # 테이블 생성은 engine.begin()을 사용
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-    async with async_engine.connect() as connection:
-        # uuid-ossp 확장 설치
-        await connection.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
-        await connection.commit()
-
-        # 기존 테이블 삭제 (필요한 경우)
-        await connection.execute(text("DROP TABLE IF EXISTS studies CASCADE"))
-        await connection.commit()
-
-        print_alembic_info()  # Alembic 정보 출력
-
-        # 모든 테이블 생성
-        async with async_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-        # 테이블 생성 확인
-        inspector = inspect(async_engine)
-        tables = await connection.run_sync(lambda sync_conn: inspector.get_table_names())
-        print(f"\nCreated tables (Async): {tables}")
-
-    AsyncTestingSessionLocal = async_sessionmaker(
+    # 세션 생성
+    async_session = async_sessionmaker(
         async_engine,
         class_=AsyncSession,
         expire_on_commit=False
     )
-    async_db = AsyncTestingSessionLocal()
 
-    try:
-        yield async_db
-    finally:
-        await async_db.close()
-        await async_engine.dispose()
+    async with async_session() as session:
+        yield session
 
-
-@pytest.fixture(scope="session")
-async def async_db_inspector(async_db_session):
-    """비동기 데이터베이스 검사를 위한 inspector fixture"""
-    engine = async_db_session.get_bind()
-    inspector = inspect(engine)
-    return inspector
+    await async_engine.dispose()
