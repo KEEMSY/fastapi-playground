@@ -2,7 +2,7 @@
 ### 테스트 관련 픽스쳐 ###
 # - 픽스처를 파일별로 구분하고, conftest.py 에서 호출하는 방식으로 테스트 환경 세팅 진행 할 것
 #   - 2025.02.14 기준 시작
-from .fixtures.db_fixtures import test_db_container, db_session, db_inspector, async_db_session, async_db_inspector
+from .fixtures.db_fixtures import test_db_container, db_session, db_inspector, async_db_session 
 from .fixtures.client_fixtures import client, async_client
 from .fixtures.eventloop_fixture import event_loop
 from .fixtures.redis_fixture import redis_client
