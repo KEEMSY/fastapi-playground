@@ -29,7 +29,8 @@ def wait_for_stable_status(container, stable_duration=3, interval=1):
     return False
 
 
-def create_docker_network(network_name: str = "test-network") -> None:
+def create_docker_network(network_name: str = "test-fastapi-playground") -> None:
+    """Docker 네트워크 생성(사용하지 않음)"""
     client = docker.from_env()
     try:
         network = client.networks.get(network_name)
@@ -40,6 +41,7 @@ def create_docker_network(network_name: str = "test-network") -> None:
 
 
 def remove_existing_container(client: docker.DockerClient, container_name: str) -> None:
+    """컨테이너 제거(사용하지 않음)"""
     try:
         container = client.containers.get(container_name)
         print(f"Container '{container_name}' exists. Stopping and removing...")
@@ -51,13 +53,14 @@ def remove_existing_container(client: docker.DockerClient, container_name: str) 
 
 
 def wait_for_postgres(container, timeout=30):
+    settings = get_test_settings()
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
             result = container.exec_run("pg_isready")
             if result.exit_code == 0:
                 result = container.exec_run(
-                    f'psql -U root -d test-project -c "SELECT 1"'
+                    f'psql -U {settings.POSTGRES_USER} -d {settings.POSTGRES_DB} -c "SELECT 1"'
                 )
                 if result.exit_code == 0:
                     print("PostgreSQL is fully ready!")
@@ -69,11 +72,11 @@ def wait_for_postgres(container, timeout=30):
     return False
 
 
-def get_container_config(settings: TestSettings) -> Dict[str, Any]:
+def get_postgres_container_config(settings: TestSettings) -> Dict[str, Any]:
     """컨테이너 설정을 반환하는 함수"""
     return {
         "image": settings.POSTGRES_IMAGE, 
-        "name": settings.DOCKER_CONTAINER_NAME,
+        "name": settings.POSTGRES_CONTAINER_NAME,
         "detach": True,
         "environment": {
             "POSTGRES_USER": settings.POSTGRES_USER,
@@ -107,24 +110,24 @@ def start_database_container() -> Any:
     client = docker.from_env()
 
     try:
-        existing_container = client.containers.get(settings.DOCKER_CONTAINER_NAME)
+        existing_container = client.containers.get(settings.POSTGRES_CONTAINER_NAME)
         print(f"Removing existing container: {existing_container.id}")
         existing_container.remove(force=True)
     except docker.errors.NotFound:
         print("No existing container found")
 
     try:
-        container = client.containers.run(**get_container_config(settings))
+        container = client.containers.run(**get_postgres_container_config(settings))
         print(f"Started new container: {container.id}")
 
         if not wait_for_postgres(container):
             container.stop()
-            raise Exception(f"Database failed to start: {settings.DOCKER_CONTAINER_NAME}")
+            raise Exception(f"Database failed to start: {settings.POSTGRES_CONTAINER_NAME}")
 
         return container
 
     except Exception as e:
-        print(f"Error starting container {settings.DOCKER_CONTAINER_NAME}: {e}")
+        print(f"Error starting container {settings.POSTGRES_CONTAINER_NAME}: {e}")
         raise
 
 

@@ -7,10 +7,11 @@ class TestSettings(BaseModel):
     # Database settings
     POSTGRES_USER: str = "root"
     POSTGRES_PASSWORD: str = "test"
-    POSTGRES_DB: str = "test-project"
+    POSTGRES_DB: str = "test-fastapi-playground"
     POSTGRES_PORT: int = 5432
     POSTGRES_HOST: str = "localhost"
     POSTGRES_IMAGE: str = "postgres:latest" # 필요에 따라 버전 명시
+    POSTGRES_CONTAINER_NAME: str = "test-fastapi-playground-postgres"
 
     # Redis settings
     REDIS_HOST: str = "localhost"
@@ -18,11 +19,10 @@ class TestSettings(BaseModel):
     REDIS_PASSWORD: str = "test"
     REDIS_DB: int = 0
     REDIS_IMAGE: str = "redis:7.0-alpine"
-    REDIS_CONTAINER_NAME: str = "test-redis"
+    REDIS_CONTAINER_NAME: str = "test-fastapi-playground-redis"
 
     # Docker settings
-    DOCKER_NETWORK_NAME: str = "fastapi-test-project_default"
-    DOCKER_CONTAINER_NAME: str = "test-db"
+    DOCKER_NETWORK_NAME: str = "test-fastapi-playground"
 
     # Healthcheck settings
     HEALTHCHECK_INTERVAL: int = 1000000000
@@ -34,6 +34,11 @@ class TestSettings(BaseModel):
     def DATABASE_URL(self) -> str:
         """데이터베이스 URL 생성"""
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    @property
+    def ASYNC_DATABASE_URL(self) -> str:
+        """비동기 데이터베이스 URL 생성"""
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     @property
     def REDIS_URL(self) -> str:
