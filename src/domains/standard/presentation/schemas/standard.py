@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -22,6 +23,13 @@ class DatabaseSessionInfo(BaseModel):
     threads_running: str
     max_used_connections: str
 
+class PoolInfo(BaseModel):
+    max_connections: int
+    current_connections: int
+    available_connections: int
+    wait_timeout: int
+
 class StandardDbResponse(BaseModel):
     message: str
     session_info: DatabaseSessionInfo
+    pool_info: Optional[PoolInfo] = None

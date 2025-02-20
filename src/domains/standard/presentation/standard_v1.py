@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.common.constants import APIVersion
 from src.common.presentation.response import BaseErrorResponse, BaseResponse
 from src.common.presentation.router import create_versioned_router
-from src.domains.standard.presentation.schemas.standard import StandardResponse, StandardDbResponse, DatabaseSessionInfo
+from src.domains.standard.presentation.schemas.standard import StandardResponse, StandardDbResponse, DatabaseSessionInfo, PoolInfo
 from src.utils import Logging
 from src.database.database import get_db, get_async_db, async_engine
 
@@ -237,6 +237,20 @@ def sync_test_with_sync(
     worker_id = multiprocessing.current_process().name
     thread_id = threading.current_thread().name
     
+    # Log connection pool status before query execution
+    logger.info(f"Checking connection pool status before query execution")
+    pool_status = db.execute(text("""
+        SELECT 
+            @@max_connections as max_connections,
+            @@wait_timeout as wait_timeout,
+            (SELECT COUNT(*) FROM information_schema.PROCESSLIST) as current_connections
+    """))
+    pool_info = pool_status.mappings().first()
+    logger.info(f"Connection Pool Status - Max: {pool_info['max_connections']}, "
+                f"Current: {pool_info['current_connections']}, "
+                f"Available: {int(pool_info['max_connections']) - int(pool_info['current_connections'])}, "
+                f"Wait Timeout: {pool_info['wait_timeout']}s")
+    
     # MySQL용 연결 정보 조회
     result = db.execute(text("""
         SELECT 
@@ -263,13 +277,25 @@ def sync_test_with_sync(
         active_connections=db_stats["active_connections"],
         threads_connected=additional_stats.get("Threads_connected", "0"),
         threads_running=additional_stats.get("Threads_running", "0"),
-        max_used_connections=additional_stats.get("Max_used_connections", "0")
+        max_used_connections=additional_stats.get("Max_used_connections", "0"),
+        max_connections=int(pool_info['max_connections']),
+        current_connections=int(pool_info['current_connections']),
+        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
+        wait_timeout=int(pool_info['wait_timeout'])
+    )
+    
+    pool_info = PoolInfo(
+        max_connections=int(pool_info['max_connections']),
+        current_connections=int(pool_info['current_connections']),
+        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
+        wait_timeout=int(pool_info['wait_timeout'])
     )
     
     return BaseResponse(
         data=StandardDbResponse(
             message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})",
-            session_info=session_info
+            session_info=session_info,
+            pool_info=pool_info
         ),
     )
 
@@ -293,8 +319,22 @@ async def async_test_with_async_db_session(
     worker_id = multiprocessing.current_process().name
     thread_id = threading.current_thread().name
     
-    # 현재 데이터베이스 연결 정보 조회
+    # Log connection pool status before query execution
+    logger.info(f"Checking async connection pool status before query execution")
     async with async_engine.connect() as conn:
+        pool_status = await conn.execute(text("""
+            SELECT 
+                @@max_connections as max_connections,
+                @@wait_timeout as wait_timeout,
+                (SELECT COUNT(*) FROM information_schema.PROCESSLIST) as current_connections
+        """))
+        pool_info = pool_status.mappings().first()
+        logger.info(f"Connection Pool Status - Max: {pool_info['max_connections']}, "
+                    f"Current: {pool_info['current_connections']}, "
+                    f"Available: {int(pool_info['max_connections']) - int(pool_info['current_connections'])}, "
+                    f"Wait Timeout: {pool_info['wait_timeout']}s")
+        
+        # 현재 데이터베이스 연결 정보 조회
         result = await conn.execute(text("""
             SELECT 
                 COUNT(*) as total_connections,
@@ -321,13 +361,25 @@ async def async_test_with_async_db_session(
         active_connections=db_stats["active_connections"],
         threads_connected=additional_stats.get("Threads_connected", "0"),
         threads_running=additional_stats.get("Threads_running", "0"),
-        max_used_connections=additional_stats.get("Max_used_connections", "0")
+        max_used_connections=additional_stats.get("Max_used_connections", "0"),
+        max_connections=int(pool_info['max_connections']),
+        current_connections=int(pool_info['current_connections']),
+        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
+        wait_timeout=int(pool_info['wait_timeout'])
+    )
+    
+    pool_info = PoolInfo(
+        max_connections=int(pool_info['max_connections']),
+        current_connections=int(pool_info['current_connections']),
+        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
+        wait_timeout=int(pool_info['wait_timeout'])
     )
     
     return BaseResponse(
         data=StandardDbResponse(
             message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})",
-            session_info=session_info
+            session_info=session_info,
+            pool_info=pool_info
         ),
     )
 
@@ -349,6 +401,20 @@ async def async_test_with_async_db_session_with_sync(
     process_id = os.getpid()
     worker_id = multiprocessing.current_process().name
     thread_id = threading.current_thread().name
+    
+    # Log connection pool status before query execution
+    logger.info(f"Checking connection pool status before query execution")
+    pool_status = db.execute(text("""
+        SELECT 
+            @@max_connections as max_connections,
+            @@wait_timeout as wait_timeout,
+            (SELECT COUNT(*) FROM information_schema.PROCESSLIST) as current_connections
+    """))
+    pool_info = pool_status.mappings().first()
+    logger.info(f"Connection Pool Status - Max: {pool_info['max_connections']}, "
+                f"Current: {pool_info['current_connections']}, "
+                f"Available: {int(pool_info['max_connections']) - int(pool_info['current_connections'])}, "
+                f"Wait Timeout: {pool_info['wait_timeout']}s")
     
     # MySQL용 연결 정보 조회
     result = db.execute(text("""
@@ -376,12 +442,24 @@ async def async_test_with_async_db_session_with_sync(
         active_connections=db_stats["active_connections"],
         threads_connected=additional_stats.get("Threads_connected", "0"),
         threads_running=additional_stats.get("Threads_running", "0"),
-        max_used_connections=additional_stats.get("Max_used_connections", "0")
+        max_used_connections=additional_stats.get("Max_used_connections", "0"),
+        max_connections=int(pool_info['max_connections']),
+        current_connections=int(pool_info['current_connections']),
+        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
+        wait_timeout=int(pool_info['wait_timeout'])
+    )
+    
+    pool_info = PoolInfo(
+        max_connections=int(pool_info['max_connections']),
+        current_connections=int(pool_info['current_connections']),
+        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
+        wait_timeout=int(pool_info['wait_timeout'])
     )
     
     return BaseResponse(
         data=StandardDbResponse(
             message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})",
-            session_info=session_info
+            session_info=session_info,
+            pool_info=pool_info
         ),
     )    
