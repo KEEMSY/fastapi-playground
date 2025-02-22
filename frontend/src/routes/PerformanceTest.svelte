@@ -1,7 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { performanceMetrics } from '../lib/apiGateway';
-    import { TestScenarios, runScenario } from '../lib/apiGateway';
+    import { performanceMetrics, TestScenarios, runScenario } from '../lib/performanceTest';
     import Chart from 'chart.js/auto';
     
     let testResults = [];

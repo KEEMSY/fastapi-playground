@@ -74,84 +74,6 @@ async function callEndpoint(endpoint, timeout = null) {
 
 // 성능 비교를 위한 시나리오 정의
 export const TestScenarios = [
-    {
-        name: "시나리오 1: 비동기 메서드 + 비동기 대기 (1 Loop 당 요청 10회, 3 Loop 반복)",
-        description: "비동기 메서드에서 비동기 대기를 사용하는 경우 (이상적인 비동기 처리)",
-        endpoints: [
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 1 },
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 2 },
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 3 },
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 2 },
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 1 },
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 3 },
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 2 },
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 1 },
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 3 },
-            { type: EndpointType.ASYNC_WITH_ASYNC_WAIT, timeout: 2 }
-        ],
-        iterations: 3
-    },
-    {
-        name: "시나리오 2: 비동기 메서드 + 동기 대기 (1 Loop 당 요청 10회, 3 Loop 반복)",
-        description: "비동기 메서드에서 동기 대기를 사용하는 경우 (스레드 블로킹)",
-        endpoints: [
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 1 },
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 2 },
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 3 },
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 2 },
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 1 },
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 3 },
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 2 },
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 1 },
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 3 },
-            { type: EndpointType.ASYNC_WITH_SYNC_WAIT, timeout: 2 }
-        ],
-        iterations: 3
-    },
-    {
-        name: "시나리오 3: 동기 메서드 + 동기 대기 (1 Loop 당 요청 10회, 3 Loop 반복)",
-        description: "동기 메서드에서 동기 대기를 사용하는 경우 (전통적인 블로킹 방식)",
-        endpoints: [
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 1 },
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 2 },
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 3 },
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 2 },
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 1 },
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 3 },
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 2 },
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 1 },
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 3 },
-            { type: EndpointType.SYNC_WITH_WAIT, timeout: 2 }
-        ],
-        iterations: 3
-    },
-    {
-        name: "시나리오 4: 대규모 동시 요청 (비동기 메서드 + 비동기 대기, 50개)",
-        description: "단일 시점에 50개의 요청을 비동기 메서드 + 비동기 대기 방식으로 처리 (이상적인 비동기 처리)",
-        endpoints: Array(50).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_ASYNC_WAIT,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 5: 대규모 동시 요청 (비동기 메서드 + 동기 대기, 50개)",
-        description: "단일 시점에 50개의 요청을 비동기 메서드 + 동기 대기 방식으로 처리 (스레드 블로킹)",
-        endpoints: Array(50).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_SYNC_WAIT,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 6: 대규모 동시 요청 (동기 메서드 + 동기 대기, 50개)",
-        description: "단일 시점에 50개의 요청을 동기 메서드 + 동기 대기 방식으로 처리 (전통적인 블로킹 방식)",
-        endpoints: Array(50).fill().map((_, index) => ({
-            type: EndpointType.SYNC_WITH_WAIT,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
     // DB 세션 시나리오 수정 및 추가
     {
         name: "시나리오 7: 동기 메서드 + 동기 DB 세션 (10회 요청)",
@@ -331,13 +253,27 @@ export async function runScenario(scenarioConfig) {
         totalRequests: scenarioConfig.endpoints.length * scenarioConfig.iterations,
         iterationTimes,
         efficiency,
-        overhead: (totalTime / scenarioConfig.iterations) - theoreticalTimeMs
+        overhead: (totalTime / scenarioConfig.iterations) - theoreticalTimeMs,
+        dbMetrics: {
+            session: sessionMetrics.length > 0 ? {
+                averageTotalConnections: sessionMetrics.reduce((acc, m) => acc + m.total_connections, 0) / sessionMetrics.length,
+                averageActiveConnections: sessionMetrics.reduce((acc, m) => acc + m.active_connections, 0) / sessionMetrics.length,
+                maxThreadsConnected: Math.max(...sessionMetrics.map(m => m.threads_connected)),
+                maxThreadsRunning: Math.max(...sessionMetrics.map(m => m.threads_running)),
+                maxUsedConnections: Math.max(...sessionMetrics.map(m => m.max_used_connections)),
+                timeline: sessionMetrics
+            } : null,
+            pool: poolMetrics.length > 0 ? {
+                maxConnections: poolMetrics[0]?.max_connections || 0,
+                averageCurrentConnections: poolMetrics.reduce((acc, m) => acc + m.current_connections, 0) / poolMetrics.length,
+                averageAvailableConnections: poolMetrics.reduce((acc, m) => acc + m.available_connections, 0) / poolMetrics.length,
+                waitTimeout: poolMetrics[0]?.wait_timeout || 0,
+                timeline: poolMetrics
+            } : null
+        }
     };
 
-    performanceMetrics.update(current => ({
-        ...current,
-        endpointMetrics: [...current.endpointMetrics, metrics]
-    }));
+    console.log('Final Metrics:', metrics);  // 최종 메트릭스 로깅
 
     return metrics;
 } 

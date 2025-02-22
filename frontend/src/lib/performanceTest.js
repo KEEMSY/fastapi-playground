@@ -152,163 +152,46 @@ export const TestScenarios = [
         })),
         iterations: 1
     },
-    // DB 세션 시나리오 수정 및 추가
-    {
-        name: "시나리오 7: 동기 메서드 + 동기 DB 세션 (10회 요청)",
-        description: "전통적인 동기 방식의 DB 세션 처리",
-        endpoints: Array(10).fill().map((_, index) => ({
-            type: EndpointType.SYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 8: 비동기 메서드 + 동기 DB 세션 (10회 요청)",
-        description: "비동기 메서드에서 동기 DB 세션 사용 (안티패턴)",
-        endpoints: Array(10).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 9: 비동기 메서드 + 비동기 DB 세션 (10회 요청)",
-        description: "이상적인 비동기 DB 세션 처리",
-        endpoints: Array(10).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_ASYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 10: 대규모 동시 요청 - 동기 DB (50개)",
-        description: "대규모 동시 요청에서의 동기 DB 세션 성능",
-        endpoints: Array(50).fill().map((_, index) => ({
-            type: EndpointType.SYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 11: 대규모 동시 요청 - 비동기 메서드 + 동기 DB (50개)",
-        description: "대규모 동시 요청에서의 비동기-동기 혼합 DB 세션 성능 (안티패턴)",
-        endpoints: Array(50).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 12: 대규모 동시 요청 - 비동기 DB (50개)",
-        description: "대규모 동시 요청에서의 비동기 DB 세션 성능 (이상적인 패턴)",
-        endpoints: Array(50).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_ASYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 13: 초대규모 동시 요청 - 동기 DB (100개)",
-        description: "초대규모 동시 요청에서의 동기 DB 세션 한계 테스트",
-        endpoints: Array(100).fill().map((_, index) => ({
-            type: EndpointType.SYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 14: 초대규모 동시 요청 - 비동기 DB (100개)",
-        description: "초대규모 동시 요청에서의 비동기 DB 세션 한계 테스트",
-        endpoints: Array(100).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_ASYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
-    {
-        name: "시나리오 15: 초대규모 동시 요청 - 비동기 메서드 + 동기 DB (100개)",
-        description: "초대규모 동시 요청에서의 비동기-동기 혼합 DB 세션 한계 테스트",
-        endpoints: Array(100).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
 ];
 
 // 시나리오 실행 함수
 export async function runScenario(scenarioConfig) {
-    console.log('Starting scenario:', scenarioConfig.name);
+    console.log('Starting scenario:', scenarioConfig.name); // 시나리오 시작 로그
     const startTime = performance.now();
     let allResults = [];
     let iterationTimes = [];
     let totalExpectedTime = 0;
 
-    // DB 세션 메트릭스 배열 초기화
-    let sessionMetrics = [];
-    let poolMetrics = [];
-
+    // 이론적인 총 대기 시간 계산
     scenarioConfig.endpoints.forEach(endpoint => {
         totalExpectedTime += endpoint.timeout;
     });
 
     for (let i = 0; i < scenarioConfig.iterations; i++) {
-        console.log(`Starting iteration ${i + 1} of ${scenarioConfig.iterations}`);
+        console.log(`Starting iteration ${i + 1} of ${scenarioConfig.iterations}`); // 반복 시작 로그
         const iterationStartTime = performance.now();
 
         try {
             const results = await Promise.all(
-                scenarioConfig.endpoints.map(async endpoint => {
-                    const response = await callEndpoint(endpoint.type, endpoint.timeout);
-                    // API 응답 구조 로깅
-                    console.log('API Response:', response);
-                    return response;
-                })
+                scenarioConfig.endpoints.map(endpoint =>
+                    callEndpoint(endpoint.type, endpoint.timeout)
+                )
             );
 
             const iterationTime = performance.now() - iterationStartTime;
             iterationTimes.push(iterationTime);
 
-            // DB 세션 정보 수집
-            results.forEach(response => {
-                // 수정된 데이터 접근 경로
-                const responseData = response.data?.data;  // response.data.data로 접근
-                console.log('Processing response data:', responseData);
+            allResults = [...allResults, ...results.map(r => ({
+                ...r,
+                iterationNumber: i + 1,
+                iterationTime
+            }))];
 
-                if (responseData?.session_info) {
-                    sessionMetrics.push({
-                        iterationNumber: i + 1,
-                        timestamp: new Date().toISOString(),
-                        total_connections: parseInt(responseData.session_info.total_connections) || 0,
-                        active_connections: parseInt(responseData.session_info.active_connections) || 0,
-                        threads_connected: parseInt(responseData.session_info.threads_connected) || 0,
-                        threads_running: parseInt(responseData.session_info.threads_running) || 0,
-                        max_used_connections: parseInt(responseData.session_info.max_used_connections) || 0
-                    });
-                }
-                if (responseData?.pool_info) {
-                    poolMetrics.push({
-                        iterationNumber: i + 1,
-                        timestamp: new Date().toISOString(),
-                        max_connections: parseInt(responseData.pool_info.max_connections) || 0,
-                        current_connections: parseInt(responseData.pool_info.current_connections) || 0,
-                        available_connections: parseInt(responseData.pool_info.available_connections) || 0,
-                        wait_timeout: parseInt(responseData.pool_info.wait_timeout) || 0
-                    });
-                }
-            });
-
-            allResults = [...allResults, ...results];
-
-            console.log(`Iteration ${i + 1} completed`);
+            console.log(`Iteration ${i + 1} completed`); // 반복 완료 로그
         } catch (error) {
-            console.error(`Error in iteration ${i + 1}:`, error);
+            console.error(`Error in iteration ${i + 1}:`, error); // 반복 에러 로그
         }
     }
-
-    // 메트릭스 로깅
-    console.log('Session Metrics:', sessionMetrics);
-    console.log('Pool Metrics:', poolMetrics);
 
     const endTime = performance.now();
     const totalTime = endTime - startTime;
