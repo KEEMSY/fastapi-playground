@@ -8,31 +8,17 @@ export const performanceMetrics = writable({
 
 // API 엔드포인트 타입 정의
 export const EndpointType = {
-    // 대기 요청 타입
-    ASYNC_WITH_ASYNC_WAIT: {
-        path: 'async-test-with-await-with-async',
-        name: '비동기 메서드 + 비동기 대기'
-    },
-    ASYNC_WITH_SYNC_WAIT: {
-        path: 'async-test-with-await-with-sync',
-        name: '비동기 메서드 + 동기 대기'
-    },
-    SYNC_WITH_WAIT: {
-        path: 'sync-test-with-wait',
-        name: '동기 메서드 + 동기 대기'
-    },
-
     // DB 세션 요청 타입 수정
     SYNC_WITH_SYNC_DB: {
-        path: 'sync-test-with-sync-db-session',  // 이미 구현된 엔드포인트와 일치
+        path: 'sync-test-with-sync-db-session',
         name: '동기 메서드 + 동기 DB 세션'
     },
     ASYNC_WITH_SYNC_DB: {
-        path: 'async-test-with-async-db-session-with-sync',  // 이미 구현된 엔드포인트와 일치
+        path: 'async-test-with-async-db-session-with-sync',
         name: '비동기 메서드 + 동기 DB 세션'
     },
     ASYNC_WITH_ASYNC_DB: {
-        path: 'async-test-with-async-db-session',  // 이미 구현된 엔드포인트와 일치
+        path: 'async-test-with-async-db-session',
         name: '비동기 메서드 + 비동기 DB 세션'
     }
 };
@@ -74,7 +60,6 @@ async function callEndpoint(endpoint, timeout = null) {
 
 // 성능 비교를 위한 시나리오 정의
 export const TestScenarios = [
-    // 기존 기본 시나리오 유지
     {
         name: "기본 시나리오 1: 동기 메서드 + 동기 DB 세션 (10회 요청)",
         description: "전통적인 동기 방식의 DB 세션 처리",
@@ -157,6 +142,7 @@ export const TestScenarios = [
         ],
         iterations: 1
     },
+    // 실제 환경을 가정한 시나리오는 개선이 필요함: operation 타입에 대한 엔드포인트의 처리가 필요해보임(현재는 타임아웃(대기시간)을 통해 해당 작업의 부하를 가정하였음)
     {
         name: "실제 환경 시나리오 1-A: 동기 컨텍스트 복잡한 쿼리 부하 테스트",
         description: "동기 방식에서의 대용량 데이터 처리와 복잡한 쿼리 성능 측정",
