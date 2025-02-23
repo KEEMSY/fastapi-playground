@@ -637,6 +637,17 @@
                             심화 시나리오
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a
+                            class="nav-link {activeTab === 'real'
+                                ? 'active'
+                                : ''}"
+                            href="#"
+                            on:click|preventDefault={() => (activeTab = "real")}
+                        >
+                            실제 시나리오
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -644,7 +655,7 @@
                 <!-- 기본 시나리오 그리드 -->
                 {#if activeTab === "basic"}
                     <div class="scenarios-grid">
-                        {#each dbScenarios.filter((s) => !s.name.includes("심화")) as scenario}
+                        {#each dbScenarios.filter((s) => !s.name.includes("심화") && !s.name.includes("실제")) as scenario}
                             <div class="scenario-card">
                                 <div class="scenario-content">
                                     <h6>{scenario.name}</h6>
@@ -714,10 +725,81 @@
                             </div>
                         {/each}
                     </div>
-                    <!-- 심화 시나리오 그리드 -->
-                {:else}
+                {:else if activeTab === "advanced"}
                     <div class="scenarios-grid">
                         {#each dbScenarios.filter( (s) => s.name.includes("심화"), ) as scenario}
+                            <div class="scenario-card">
+                                <div class="scenario-content">
+                                    <h6>{scenario.name}</h6>
+                                    <p>{scenario.description}</p>
+                                    <div class="scenario-meta">
+                                        <span class="badge bg-info">
+                                            {scenario.endpoints.length}개 요청
+                                        </span>
+                                        <span class="badge bg-secondary">
+                                            {scenario.iterations}회 반복
+                                        </span>
+                                    </div>
+
+                                    <!-- 실행 상태 표시 추가 -->
+                                    {#if runningScenarios.has(scenario.name)}
+                                        <div class="progress-container">
+                                            <div
+                                                class="progress"
+                                                style="height: 10px;"
+                                            >
+                                                <div
+                                                    class="progress-bar progress-bar-striped progress-bar-animated"
+                                                    role="progressbar"
+                                                    style="width: {(progress[
+                                                        scenario.name
+                                                    ]?.current /
+                                                        progress[scenario.name]
+                                                            ?.total) *
+                                                        100 || 0}%"
+                                                ></div>
+                                            </div>
+                                            <div class="progress-status">
+                                                <small>
+                                                    {progress[scenario.name]
+                                                        ?.status ||
+                                                        "실행 중..."}
+                                                    ({progress[scenario.name]
+                                                        ?.current ||
+                                                        0}/{progress[
+                                                        scenario.name
+                                                    ]?.total || 0})
+                                                </small>
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
+                                <div class="scenario-footer">
+                                    <button
+                                        class="btn btn-primary w-100"
+                                        on:click={() =>
+                                            executeScenario(scenario)}
+                                        disabled={runningScenarios.has(
+                                            scenario.name,
+                                        )}
+                                    >
+                                        {#if runningScenarios.has(scenario.name)}
+                                            <span
+                                                class="spinner-border spinner-border-sm me-2"
+                                                role="status"
+                                            ></span>
+                                            실행 중...
+                                        {:else}
+                                            실행
+                                        {/if}
+                                    </button>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else if activeTab === "real"}
+                    <div class="scenarios-grid">
+                        {#each dbScenarios.filter( (s) => s.name.includes("실제"), ) as scenario}
                             <div class="scenario-card">
                                 <div class="scenario-content">
                                     <h6>{scenario.name}</h6>

@@ -156,6 +156,94 @@ export const TestScenarios = [
             ...Array(150).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 1 }))
         ],
         iterations: 1
+    },
+    {
+        name: "실제 환경 시나리오 1-A: 동기 컨텍스트 복잡한 쿼리 부하 테스트",
+        description: "동기 방식에서의 대용량 데이터 처리와 복잡한 쿼리 성능 측정",
+        endpoints: [
+            // 복잡한 조인 쿼리 (30개 요청)
+            ...Array(30).fill().map(() => ({
+                type: EndpointType.SYNC_WITH_SYNC_DB,
+                operation: 'complex_join',
+                timeout: 3
+            })),
+            // 대용량 데이터 처리 (20개 요청)
+            ...Array(20).fill().map(() => ({
+                type: EndpointType.SYNC_WITH_SYNC_DB,
+                operation: 'large_dataset',
+                timeout: 5
+            }))
+        ],
+        iterations: 2
+    },
+    {
+        name: "실제 환경 시나리오 1-B: 비동기 컨텍스트 복잡한 쿼리 부하 테스트",
+        description: "비동기 방식에서의 대용량 데이터 처리와 복잡한 쿼리 성능 측정",
+        endpoints: [
+            // 복잡한 조인 쿼리 (30개 요청)
+            ...Array(30).fill().map(() => ({
+                type: EndpointType.ASYNC_WITH_ASYNC_DB,
+                operation: 'complex_join',
+                timeout: 3
+            })),
+            // 대용량 데이터 처리 (20개 요청)
+            ...Array(20).fill().map(() => ({
+                type: EndpointType.ASYNC_WITH_ASYNC_DB,
+                operation: 'large_dataset',
+                timeout: 5
+            }))
+        ],
+        iterations: 2
+    },
+    {
+        name: "실제 환경 시나리오 2-A: 동기 컨텍스트 혼합 워크로드 테스트",
+        description: "동기 방식에서의 다양한 유형의 데이터베이스 작업 처리",
+        endpoints: [
+            // 읽기 작업 (30개)
+            ...Array(30).fill().map(() => ({
+                type: EndpointType.SYNC_WITH_SYNC_DB,
+                operation: 'read',
+                timeout: 1
+            })),
+            // 쓰기 작업 (20개)
+            ...Array(20).fill().map(() => ({
+                type: EndpointType.SYNC_WITH_SYNC_DB,
+                operation: 'write',
+                timeout: 2
+            })),
+            // 분석 작업 (10개)
+            ...Array(10).fill().map(() => ({
+                type: EndpointType.SYNC_WITH_SYNC_DB,
+                operation: 'analysis',
+                timeout: 5
+            }))
+        ],
+        iterations: 2
+    },
+    {
+        name: "실제 환경 시나리오 2-B: 비동기 컨텍스트 혼합 워크로드 테스트",
+        description: "비동기 방식에서의 다양한 유형의 데이터베이스 작업 처리",
+        endpoints: [
+            // 읽기 작업 (30개)
+            ...Array(30).fill().map(() => ({
+                type: EndpointType.ASYNC_WITH_ASYNC_DB,
+                operation: 'read',
+                timeout: 1
+            })),
+            // 쓰기 작업 (20개)
+            ...Array(20).fill().map(() => ({
+                type: EndpointType.ASYNC_WITH_ASYNC_DB,
+                operation: 'write',
+                timeout: 2
+            })),
+            // 분석 작업 (10개)
+            ...Array(10).fill().map(() => ({
+                type: EndpointType.ASYNC_WITH_ASYNC_DB,
+                operation: 'analysis',
+                timeout: 5
+            }))
+        ],
+        iterations: 2
     }
 ];
 
