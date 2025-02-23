@@ -74,9 +74,9 @@ async function callEndpoint(endpoint, timeout = null) {
 
 // 성능 비교를 위한 시나리오 정의
 export const TestScenarios = [
-    // DB 세션 시나리오 수정 및 추가
+    // 기존 기본 시나리오 유지
     {
-        name: "시나리오 7: 동기 메서드 + 동기 DB 세션 (10회 요청)",
+        name: "기본 시나리오 1: 동기 메서드 + 동기 DB 세션 (10회 요청)",
         description: "전통적인 동기 방식의 DB 세션 처리",
         endpoints: Array(10).fill().map((_, index) => ({
             type: EndpointType.SYNC_WITH_SYNC_DB,
@@ -85,7 +85,7 @@ export const TestScenarios = [
         iterations: 1
     },
     {
-        name: "시나리오 8: 비동기 메서드 + 동기 DB 세션 (10회 요청)",
+        name: "기본 시나리오 2: 비동기 메서드 + 동기 DB 세션 (10회 요청)",
         description: "비동기 메서드에서 동기 DB 세션 사용 (안티패턴)",
         endpoints: Array(10).fill().map((_, index) => ({
             type: EndpointType.ASYNC_WITH_SYNC_DB,
@@ -94,7 +94,7 @@ export const TestScenarios = [
         iterations: 1
     },
     {
-        name: "시나리오 9: 비동기 메서드 + 비동기 DB 세션 (10회 요청)",
+        name: "기본 시나리오 3: 비동기 메서드 + 비동기 DB 세션 (10회 요청)",
         description: "이상적인 비동기 DB 세션 처리",
         endpoints: Array(10).fill().map((_, index) => ({
             type: EndpointType.ASYNC_WITH_ASYNC_DB,
@@ -102,60 +102,61 @@ export const TestScenarios = [
         })),
         iterations: 1
     },
+
+    // 새로운 심화 시나리오 추가
     {
-        name: "시나리오 10: 대규모 동시 요청 - 동기 DB (50개)",
-        description: "대규모 동시 요청에서의 동기 DB 세션 성능",
-        endpoints: Array(50).fill().map((_, index) => ({
-            type: EndpointType.SYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
+        name: "심화 시나리오 1: 점진적 부하 - 동기 DB 세션",
+        description: "동기 DB 세션의 부하 증가에 따른 성능 변화 측정 (10 -> 30 -> 50 -> 100 동시 요청)",
+        endpoints: [
+            ...Array(10).fill().map(() => ({ type: EndpointType.SYNC_WITH_SYNC_DB, timeout: 1 })),
+            ...Array(30).fill().map(() => ({ type: EndpointType.SYNC_WITH_SYNC_DB, timeout: 1 })),
+            ...Array(50).fill().map(() => ({ type: EndpointType.SYNC_WITH_SYNC_DB, timeout: 1 })),
+            ...Array(100).fill().map(() => ({ type: EndpointType.SYNC_WITH_SYNC_DB, timeout: 1 }))
+        ],
+        iterations: 3
     },
     {
-        name: "시나리오 11: 대규모 동시 요청 - 비동기 메서드 + 동기 DB (50개)",
-        description: "대규모 동시 요청에서의 비동기-동기 혼합 DB 세션 성능 (안티패턴)",
-        endpoints: Array(50).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
+        name: "심화 시나리오 2: 점진적 부하 - 비동기 DB 세션",
+        description: "비동기 DB 세션의 부하 증가에 따른 성능 변화 측정 (10 -> 30 -> 50 -> 100 동시 요청)",
+        endpoints: [
+            ...Array(10).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 1 })),
+            ...Array(30).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 1 })),
+            ...Array(50).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 1 })),
+            ...Array(100).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 1 }))
+        ],
+        iterations: 3
     },
     {
-        name: "시나리오 12: 대규모 동시 요청 - 비동기 DB (50개)",
-        description: "대규모 동시 요청에서의 비동기 DB 세션 성능 (이상적인 패턴)",
-        endpoints: Array(50).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_ASYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
+        name: "심화 시나리오 3: 장기 연결 테스트",
+        description: "동기/비동기 DB 세션의 장시간 연결 처리 능력 비교 (각 30개 요청, 5초)",
+        endpoints: [
+            ...Array(30).fill().map(() => ({ type: EndpointType.SYNC_WITH_SYNC_DB, timeout: 5 })),
+            ...Array(30).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 5 }))
+        ],
+        iterations: 2
     },
     {
-        name: "시나리오 13: 초대규모 동시 요청 - 동기 DB (100개)",
-        description: "초대규모 동시 요청에서의 동기 DB 세션 한계 테스트",
-        endpoints: Array(100).fill().map((_, index) => ({
-            type: EndpointType.SYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
+        name: "심화 시나리오 4: 혼합 부하 테스트",
+        description: "동기/비동기 DB 세션의 다양한 처리 시간 요청 혼합 처리 능력 비교",
+        endpoints: [
+            ...Array(20).fill().map(() => ({ type: EndpointType.SYNC_WITH_SYNC_DB, timeout: 1 })),
+            ...Array(15).fill().map(() => ({ type: EndpointType.SYNC_WITH_SYNC_DB, timeout: 3 })),
+            ...Array(10).fill().map(() => ({ type: EndpointType.SYNC_WITH_SYNC_DB, timeout: 5 })),
+            ...Array(20).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 1 })),
+            ...Array(15).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 3 })),
+            ...Array(10).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 5 }))
+        ],
+        iterations: 2
     },
     {
-        name: "시나리오 14: 초대규모 동시 요청 - 비동기 DB (100개)",
-        description: "초대규모 동시 요청에서의 비동기 DB 세션 한계 테스트",
-        endpoints: Array(100).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_ASYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
+        name: "심화 시나리오 5: 극한 부하 테스트",
+        description: "동기/비동기 DB 세션의 극한 상황 처리 능력 비교 (각 150개 동시 요청)",
+        endpoints: [
+            ...Array(150).fill().map(() => ({ type: EndpointType.SYNC_WITH_SYNC_DB, timeout: 1 })),
+            ...Array(150).fill().map(() => ({ type: EndpointType.ASYNC_WITH_ASYNC_DB, timeout: 1 }))
+        ],
         iterations: 1
-    },
-    {
-        name: "시나리오 15: 초대규모 동시 요청 - 비동기 메서드 + 동기 DB (100개)",
-        description: "초대규모 동시 요청에서의 비동기-동기 혼합 DB 세션 한계 테스트",
-        endpoints: Array(100).fill().map((_, index) => ({
-            type: EndpointType.ASYNC_WITH_SYNC_DB,
-            timeout: [1, 2, 3, 2, 1, 3, 2, 1, 3, 2][index % 10]
-        })),
-        iterations: 1
-    },
+    }
 ];
 
 // 시나리오 실행 함수
@@ -165,6 +166,8 @@ export async function runScenario(scenarioConfig) {
     let allResults = [];
     let iterationTimes = [];
     let totalExpectedTime = 0;
+    let currentProgress = 0;
+    const totalRequests = scenarioConfig.endpoints.length * scenarioConfig.iterations;
 
     // DB 세션 메트릭스 배열 초기화
     let sessionMetrics = [];
@@ -180,10 +183,16 @@ export async function runScenario(scenarioConfig) {
 
         try {
             const results = await Promise.all(
-                scenarioConfig.endpoints.map(async endpoint => {
+                scenarioConfig.endpoints.map(async (endpoint, endpointIndex) => {
                     const response = await callEndpoint(endpoint.type, endpoint.timeout);
-                    // API 응답 구조 로깅
-                    console.log('API Response:', response);
+                    // 진행 상황 업데이트
+                    currentProgress = (i * scenarioConfig.endpoints.length) + endpointIndex + 1;
+                    performanceMetrics.update(metrics => ({
+                        ...metrics,
+                        currentProgress,
+                        totalRequests,
+                        scenarioName: scenarioConfig.name
+                    }));
                     return response;
                 })
             );
@@ -275,5 +284,25 @@ export async function runScenario(scenarioConfig) {
 
     console.log('Final Metrics:', metrics);  // 최종 메트릭스 로깅
 
-    return metrics;
+    // 분석 메트릭스 추가
+    return analyzeResults(metrics);
+}
+
+// 결과 분석을 위한 메트릭스 수정
+function analyzeResults(metrics) {
+    return {
+        ...metrics,
+        analysis: {
+            // 연결 효율성 = (사용 중인 연결 수 / 최대 연결 수) × 100
+            connectionEfficiency: ((metrics.dbMetrics.pool.maxConnections - metrics.dbMetrics.pool.averageAvailableConnections) / metrics.dbMetrics.pool.maxConnections),
+            connectionUtilization: metrics.dbMetrics.session.averageActiveConnections / metrics.dbMetrics.session.averageTotalConnections,
+            throughput: metrics.totalRequests / (metrics.totalTime / 1000),
+            averageResponseTime: metrics.totalTime / metrics.totalRequests,
+            concurrencyImpact: metrics.dbMetrics.session.maxThreadsRunning / metrics.dbMetrics.session.maxThreadsConnected,
+            resourceEfficiency: {
+                connectionReuse: metrics.totalRequests / metrics.dbMetrics.session.averageTotalConnections,
+                connectionStability: 1 - (Math.abs(metrics.dbMetrics.session.maxThreadsConnected - metrics.dbMetrics.session.averageActiveConnections) / metrics.dbMetrics.session.maxThreadsConnected)
+            }
+        }
+    };
 } 

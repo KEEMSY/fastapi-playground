@@ -1,46 +1,71 @@
 <script>
-    import { onMount } from 'svelte';
-    import { performanceMetrics, TestScenarios, runScenario } from '../lib/dbTest'
-    import Chart from 'chart.js/auto';
-    
+    import { onMount } from "svelte";
+    import {
+        performanceMetrics,
+        TestScenarios,
+        runScenario,
+    } from "../lib/dbTest";
+    import Chart from "chart.js/auto";
+
     let charts = {};
-    let results = [];  // 여러 결과를 저장하기 위한 배열
+    let results = []; // 여러 결과를 저장하기 위한 배열
     let selectedScenario = null;
-    
-    // DB 세션 시나리오만 필터링 (시나리오 7-9)
-    const dbScenarios = TestScenarios.slice(0, 3); // 임시 3개만 실행
+    let showMetricsHelp = false;
+    let activeTab = "basic";
+
+    // 전체 시나리오 사용 (이전에는 3개만 사용)
+    const dbScenarios = TestScenarios;
+
+    let runningScenarios = new Set();
+    let progress = {};
+
+    // performanceMetrics 구독 추가
+    performanceMetrics.subscribe((metrics) => {
+        if (metrics.scenarioName && metrics.currentProgress !== undefined) {
+            progress[metrics.scenarioName] = {
+                current: metrics.currentProgress,
+                total: metrics.totalRequests,
+                status: "실행 중...",
+            };
+            progress = { ...progress }; // Svelte 반응성 트리거
+        }
+    });
 
     function updateCombinedDbMetricsChart() {
-        const canvasId = 'combinedDbMetricsChart';
-        
+        const canvasId = "combinedDbMetricsChart";
+
         if (charts[canvasId]) {
             charts[canvasId].destroy();
         }
 
-        const ctx = document.getElementById(canvasId)?.getContext('2d');
+        const ctx = document.getElementById(canvasId)?.getContext("2d");
         if (!ctx) return;
 
         const colors = [
-            { main: 'rgb(75, 192, 192)', light: 'rgba(75, 192, 192, 0.2)' },
-            { main: 'rgb(255, 99, 132)', light: 'rgba(255, 99, 132, 0.2)' },
-            { main: 'rgb(54, 162, 235)', light: 'rgba(54, 162, 235, 0.2)' }
+            { main: "rgb(75, 192, 192)", light: "rgba(75, 192, 192, 0.2)" },
+            { main: "rgb(255, 99, 132)", light: "rgba(255, 99, 132, 0.2)" },
+            { main: "rgb(54, 162, 235)", light: "rgba(54, 162, 235, 0.2)" },
         ];
 
         const datasets = results.flatMap((result, idx) => [
             {
                 label: `${result.scenarioName} - 총 연결 수`,
-                data: result.dbMetrics.session.timeline.map(m => m.total_connections),
+                data: result.dbMetrics.session.timeline.map(
+                    (m) => m.total_connections,
+                ),
                 borderColor: colors[idx].main,
                 backgroundColor: colors[idx].light,
                 borderWidth: 2,
                 tension: 0.4,
                 pointRadius: 3,
                 pointHoverRadius: 6,
-                fill: false
+                fill: false,
             },
             {
                 label: `${result.scenarioName} - 활성 연결 수`,
-                data: result.dbMetrics.session.timeline.map(m => m.active_connections),
+                data: result.dbMetrics.session.timeline.map(
+                    (m) => m.active_connections,
+                ),
                 borderColor: colors[idx].main,
                 backgroundColor: colors[idx].light,
                 borderWidth: 2,
@@ -48,11 +73,13 @@
                 tension: 0.4,
                 pointRadius: 3,
                 pointHoverRadius: 6,
-                fill: false
+                fill: false,
             },
             {
                 label: `${result.scenarioName} - 가용 연결 수`,
-                data: result.dbMetrics.pool.timeline.map(m => m.available_connections),
+                data: result.dbMetrics.pool.timeline.map(
+                    (m) => m.available_connections,
+                ),
                 borderColor: colors[idx].main,
                 backgroundColor: colors[idx].light,
                 borderWidth: 2,
@@ -60,56 +87,59 @@
                 tension: 0.4,
                 pointRadius: 3,
                 pointHoverRadius: 6,
-                fill: false
-            }
+                fill: false,
+            },
         ]);
 
         charts[canvasId] = new Chart(ctx, {
-            type: 'line',
+            type: "line",
             data: {
-                labels: results[0]?.dbMetrics.session.timeline.map(m => m.iterationNumber) || [],
-                datasets: datasets
+                labels:
+                    results[0]?.dbMetrics.session.timeline.map(
+                        (m) => m.iterationNumber,
+                    ) || [],
+                datasets: datasets,
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 interaction: {
-                    mode: 'nearest',
-                    axis: 'x',
-                    intersect: false
+                    mode: "nearest",
+                    axis: "x",
+                    intersect: false,
                 },
                 plugins: {
                     title: {
                         display: true,
-                        text: '시나리오 비교 - DB 연결 메트릭스',
+                        text: "시나리오 비교 - DB 연결 메트릭스",
                         font: {
                             size: 16,
-                            weight: 'bold'
+                            weight: "bold",
                         },
-                        padding: 20
+                        padding: 20,
                     },
                     legend: {
-                        position: 'top',
+                        position: "top",
                         labels: {
                             usePointStyle: true,
                             padding: 20,
                             font: {
-                                size: 12
-                            }
-                        }
+                                size: 12,
+                            },
+                        },
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        titleColor: '#000',
+                        backgroundColor: "rgba(255, 255, 255, 0.9)",
+                        titleColor: "#000",
                         titleFont: {
                             size: 14,
-                            weight: 'bold'
+                            weight: "bold",
                         },
-                        bodyColor: '#000',
+                        bodyColor: "#000",
                         bodyFont: {
-                            size: 13
+                            size: 13,
                         },
-                        borderColor: '#ddd',
+                        borderColor: "#ddd",
                         borderWidth: 1,
                         padding: 12,
                         displayColors: true,
@@ -119,180 +149,209 @@
                             },
                             label: (context) => {
                                 return ` ${context.dataset.label}: ${context.parsed.y}개`;
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 },
                 scales: {
                     x: {
                         title: {
                             display: true,
-                            text: '반복 횟수',
+                            text: "반복 횟수",
                             font: {
                                 size: 14,
-                                weight: 'bold'
-                            }
+                                weight: "bold",
+                            },
                         },
                         grid: {
-                            display: false
-                        }
+                            display: false,
+                        },
                     },
                     y: {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: '연결 수',
+                            text: "연결 수",
                             font: {
                                 size: 14,
-                                weight: 'bold'
-                            }
+                                weight: "bold",
+                            },
                         },
                         grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                        }
-                    }
-                }
-            }
+                            color: "rgba(0, 0, 0, 0.1)",
+                        },
+                    },
+                },
+            },
         });
     }
 
     async function executeAllScenarios() {
-        results = []; // 결과 초기화
+        results = [];
         for (const scenario of dbScenarios) {
-            const result = await runScenario(scenario);
-            results = [...results, result];
+            await executeScenario(scenario);
         }
-        // 모든 시나리오 실행 후 통합 차트 업데이트
-        setTimeout(() => {
-            updateCombinedDbMetricsChart();
-        }, 0);
     }
 
     async function executeScenario(scenario) {
-        const result = await runScenario(scenario);
-        // 동일한 시나리오가 있다면 제거
-        results = results.filter(r => r.scenarioName !== result.scenarioName);
-        // 새로운 결과 추가
-        results = [...results, result];
-        // 차트 업데이트
-        setTimeout(() => {
-            updateCombinedDbMetricsChart();
-        }, 0);
+        runningScenarios.add(scenario.name);
+        progress[scenario.name] = {
+            current: 0,
+            total: scenario.endpoints.length * scenario.iterations,
+            status: "준비 중...",
+        };
+        runningScenarios = runningScenarios; // Svelte 반응성 트리거
+        progress = { ...progress }; // Svelte 반응성 트리거
+
+        try {
+            const result = await runScenario(scenario);
+            results = results.filter(
+                (r) => r.scenarioName !== result.scenarioName,
+            );
+            results = [...results, result];
+
+            setTimeout(() => {
+                updateCombinedDbMetricsChart();
+            }, 0);
+        } catch (error) {
+            console.error("시나리오 실행 중 오류:", error);
+            progress[scenario.name].status = "오류 발생";
+            progress = { ...progress }; // Svelte 반응성 트리거
+        } finally {
+            runningScenarios.delete(scenario.name);
+            runningScenarios = runningScenarios; // Svelte 반응성 트리거
+        }
     }
 
     function updateDbMetricsChart(metrics, scenarioName) {
         const canvasId = `dbMetricsChart-${scenarioName}`;
-        
+
         if (charts[canvasId]) {
             charts[canvasId].destroy();
         }
 
-        const ctx = document.getElementById(canvasId)?.getContext('2d');
+        const ctx = document.getElementById(canvasId)?.getContext("2d");
         if (!ctx) return;
 
         charts[canvasId] = new Chart(ctx, {
-            type: 'line',
+            type: "line",
             data: {
-                labels: metrics.dbMetrics.session.timeline.map(m => m.iterationNumber),
+                labels: metrics.dbMetrics.session.timeline.map(
+                    (m) => m.iterationNumber,
+                ),
                 datasets: [
                     {
-                        label: '총 연결 수',
-                        data: metrics.dbMetrics.session.timeline.map(m => m.total_connections),
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
+                        label: "총 연결 수",
+                        data: metrics.dbMetrics.session.timeline.map(
+                            (m) => m.total_connections,
+                        ),
+                        borderColor: "rgb(75, 192, 192)",
+                        tension: 0.1,
                     },
                     {
-                        label: '활성 연결 수',
-                        data: metrics.dbMetrics.session.timeline.map(m => m.active_connections),
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1
+                        label: "활성 연결 수",
+                        data: metrics.dbMetrics.session.timeline.map(
+                            (m) => m.active_connections,
+                        ),
+                        borderColor: "rgb(255, 99, 132)",
+                        tension: 0.1,
                     },
                     {
-                        label: '가용 연결 수',
-                        data: metrics.dbMetrics.pool.timeline.map(m => m.available_connections),
-                        borderColor: 'rgb(54, 162, 235)',
-                        tension: 0.1
-                    }
-                ]
+                        label: "가용 연결 수",
+                        data: metrics.dbMetrics.pool.timeline.map(
+                            (m) => m.available_connections,
+                        ),
+                        borderColor: "rgb(54, 162, 235)",
+                        tension: 0.1,
+                    },
+                ],
             },
             options: {
                 responsive: true,
                 plugins: {
                     title: {
                         display: true,
-                        text: 'DB 연결 메트릭스'
-                    }
+                        text: "DB 연결 메트릭스",
+                    },
                 },
                 scales: {
                     y: {
-                        beginAtZero: true
-                    }
-                }
-            }
+                        beginAtZero: true,
+                    },
+                },
+            },
         });
     }
 
     function showScenarioDetails(result) {
+        console.log("Showing details for scenario:", result); // 디버깅용
         selectedScenario = result;
-        // 모달이 표시된 후 차트 생성을 위해 setTimeout 사용
         setTimeout(() => {
             updateModalChart(result);
-        }, 0);
+        }, 100); // 시간 약간 증가
     }
 
     function updateModalChart(result) {
         const canvasId = `dbMetricsChart-modal-${result.scenarioName}`;
-        
+
         if (charts[canvasId]) {
             charts[canvasId].destroy();
         }
 
-        const ctx = document.getElementById(canvasId)?.getContext('2d');
+        const ctx = document.getElementById(canvasId)?.getContext("2d");
         if (!ctx) return;
 
         charts[canvasId] = new Chart(ctx, {
-            type: 'line',
+            type: "line",
             data: {
-                labels: result.dbMetrics.session.timeline.map(m => m.iterationNumber),
+                labels: result.dbMetrics.session.timeline.map(
+                    (m) => m.iterationNumber,
+                ),
                 datasets: [
                     {
-                        label: '총 연결 수',
-                        data: result.dbMetrics.session.timeline.map(m => m.total_connections),
-                        borderColor: 'rgb(75, 192, 192)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        label: "총 연결 수",
+                        data: result.dbMetrics.session.timeline.map(
+                            (m) => m.total_connections,
+                        ),
+                        borderColor: "rgb(75, 192, 192)",
+                        backgroundColor: "rgba(75, 192, 192, 0.2)",
                         borderWidth: 2,
                         tension: 0.4,
                         pointRadius: 3,
-                        pointHoverRadius: 6
+                        pointHoverRadius: 6,
                     },
                     {
-                        label: '활성 연결 수',
-                        data: result.dbMetrics.session.timeline.map(m => m.active_connections),
-                        borderColor: 'rgb(255, 99, 132)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        label: "활성 연결 수",
+                        data: result.dbMetrics.session.timeline.map(
+                            (m) => m.active_connections,
+                        ),
+                        borderColor: "rgb(255, 99, 132)",
+                        backgroundColor: "rgba(255, 99, 132, 0.2)",
                         borderWidth: 2,
                         tension: 0.4,
                         pointRadius: 3,
-                        pointHoverRadius: 6
+                        pointHoverRadius: 6,
                     },
                     {
-                        label: '가용 연결 수',
-                        data: result.dbMetrics.pool.timeline.map(m => m.available_connections),
-                        borderColor: 'rgb(54, 162, 235)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        label: "가용 연결 수",
+                        data: result.dbMetrics.pool.timeline.map(
+                            (m) => m.available_connections,
+                        ),
+                        borderColor: "rgb(54, 162, 235)",
+                        backgroundColor: "rgba(54, 162, 235, 0.2)",
                         borderWidth: 2,
                         tension: 0.4,
                         pointRadius: 3,
-                        pointHoverRadius: 6
-                    }
-                ]
+                        pointHoverRadius: 6,
+                    },
+                ],
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 interaction: {
-                    mode: 'index',
-                    intersect: false
+                    mode: "index",
+                    intersect: false,
                 },
                 plugins: {
                     title: {
@@ -300,14 +359,14 @@
                         text: `${result.scenarioName} - DB 연결 메트릭스`,
                         font: {
                             size: 16,
-                            weight: 'bold'
-                        }
+                            weight: "bold",
+                        },
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        titleColor: '#000',
-                        bodyColor: '#000',
-                        borderColor: '#ddd',
+                        backgroundColor: "rgba(255, 255, 255, 0.9)",
+                        titleColor: "#000",
+                        bodyColor: "#000",
+                        borderColor: "#ddd",
                         borderWidth: 1,
                         padding: 12,
                         displayColors: true,
@@ -317,56 +376,420 @@
                             },
                             label: (context) => {
                                 return ` ${context.dataset.label}: ${context.parsed.y}개`;
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 },
                 scales: {
                     x: {
                         title: {
                             display: true,
-                            text: '반복 횟수'
-                        }
+                            text: "반복 횟수",
+                        },
                     },
                     y: {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: '연결 수'
-                        }
-                    }
-                }
-            }
+                            text: "연결 수",
+                        },
+                    },
+                },
+            },
         });
     }
 
     function closeScenarioDetails() {
         selectedScenario = null;
     }
+
+    // 결과 테이블에 새로운 메트릭스 추가
+    function formatMetric(value) {
+        return typeof value === "number" ? value.toFixed(2) : "0";
+    }
 </script>
 
 <div class="container mt-4">
-    <!-- 시나리오 목록 -->
-    <div class="scenarios mb-4">
-        <div class="card mb-3">
-            <div class="card-body">
-                <h5 class="card-title">모든 DB 세션 테스트 실행</h5>
-                <button class="btn btn-primary" on:click={executeAllScenarios}>
-                    전체 실행
+    <!-- 테스트 개요 및 메트릭스 설명 섹션 -->
+    <div class="overview-section mb-4">
+        <div class="card">
+            <div
+                class="card-header d-flex justify-content-between align-items-center"
+            >
+                <h5 class="mb-0">DB 세션 테스트 개요</h5>
+                <button
+                    class="btn btn-sm btn-outline-primary"
+                    on:click={() => (showMetricsHelp = !showMetricsHelp)}
+                >
+                    {showMetricsHelp ? "설명 닫기" : "설명 보기"}
                 </button>
             </div>
-        </div>
-        {#each dbScenarios as scenario}
-            <div class="card mb-3">
+
+            {#if showMetricsHelp}
                 <div class="card-body">
-                    <h5 class="card-title">{scenario.name}</h5>
-                    <p class="card-text">{scenario.description}</p>
-                    <button class="btn btn-primary" on:click={() => executeScenario(scenario)}>
-                        실행
+                    <!-- 테스트 목적 설명 -->
+                    <div class="test-purpose mb-4">
+                        <h6>📋 테스트 목적</h6>
+                        <ul>
+                            <li>
+                                동기/비동기 컨텍스트에서의 DB 세션 처리 성능
+                                비교
+                            </li>
+                            <li>각 컨텍스트별 DB 연결 관리 효율성 측정</li>
+                            <li>부하 상황에서의 시스템 동작 특성 분석</li>
+                        </ul>
+                    </div>
+
+                    <!-- 성능 메트릭스 설명 -->
+                    <div class="metrics-explanation">
+                        <h6>📊 성능 메트릭스 상세 설명</h6>
+                        <div class="metrics-grid">
+                            <div class="metric-explanation-item">
+                                <h6>처리량 (req/s)</h6>
+                                <p>초당 처리된 요청 수를 나타냅니다.</p>
+                                <ul>
+                                    <li>
+                                        계산 방법: 총 요청 수 ÷ 총 실행 시간(초)
+                                    </li>
+                                    <li>
+                                        높을수록 더 많은 요청을 빠르게 처리함을
+                                        의미
+                                    </li>
+                                    <li>
+                                        비동기 처리가 일반적으로 더 높은
+                                        처리량을 보임
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="metric-explanation-item">
+                                <h6>평균 응답 시간 (ms)</h6>
+                                <p>
+                                    각 요청당 평균 처리 시간을 밀리초 단위로
+                                    나타냅니다.
+                                </p>
+                                <ul>
+                                    <li>
+                                        계산 방법: 총 실행 시간(ms) ÷ 총 요청 수
+                                    </li>
+                                    <li>
+                                        낮을수록 개별 요청이 더 빠르게 처리됨을
+                                        의미
+                                    </li>
+                                    <li>
+                                        부하가 증가하면 일반적으로 증가하는 경향
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="metric-explanation-item">
+                                <h6>연결 효율성 (%)</h6>
+                                <p>
+                                    사용 가능한 DB 연결이 얼마나 효율적으로
+                                    관리되는지 나타냅니다.
+                                </p>
+                                <ul>
+                                    <li>
+                                        계산 방법: (가용 연결 수 ÷ 최대 연결 수)
+                                        × 100
+                                    </li>
+                                    <li>
+                                        높을수록 연결 풀이 효율적으로 관리됨을
+                                        의미
+                                    </li>
+                                    <li>
+                                        적정 범위: 20-40% (예비 연결 유지 필요)
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="metric-explanation-item">
+                                <h6>연결 활용도 (%)</h6>
+                                <p>
+                                    생성된 연결이 얼마나 활발하게 사용되는지
+                                    나타냅니다.
+                                </p>
+                                <ul>
+                                    <li>
+                                        계산 방법: (활성 연결 수 ÷ 총 연결 수) ×
+                                        100
+                                    </li>
+                                    <li>
+                                        높을수록 연결이 적극적으로 사용됨을 의미
+                                    </li>
+                                    <li>
+                                        이상적인 범위: 60-80% (여유 확보 필요)
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="metric-explanation-item">
+                                <h6>동시성 영향도</h6>
+                                <p>
+                                    동시 요청이 시스템 성능에 미치는 영향을
+                                    나타냅니다.
+                                </p>
+                                <ul>
+                                    <li>
+                                        계산 방법: 실행 중인 스레드 수 ÷ 연결된
+                                        스레드 수
+                                    </li>
+                                    <li>
+                                        1에 가까울수록 효율적인 동시성 처리를
+                                        의미
+                                    </li>
+                                    <li>
+                                        비동기 처리가 일반적으로 더 좋은 점수를
+                                        보임
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="metrics-tips mt-4">
+                            <h6>💡 성능 분석 가이드</h6>
+                            <div class="tips-grid">
+                                <div class="tip-item">
+                                    <h7>기본 패턴</h7>
+                                    <ul>
+                                        <li>
+                                            처리량과 응답 시간은 일반적으로
+                                            반비례 관계
+                                        </li>
+                                        <li>
+                                            연결 효율성과 활용도는 상황에 따라
+                                            적절한 균형 필요
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="tip-item">
+                                    <h7>최적화 포인트</h7>
+                                    <ul>
+                                        <li>
+                                            높은 처리량이 필요한 경우 비동기
+                                            처리 권장
+                                        </li>
+                                        <li>
+                                            연결 풀 크기는 예상 최대 동시 요청의
+                                            1.5배 권장
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="tip-item">
+                                    <h7>주의 사항</h7>
+                                    <ul>
+                                        <li>
+                                            연결 활용도가 90% 이상이면 병목 위험
+                                        </li>
+                                        <li>
+                                            응답 시간 증가는 성능 저하의 조기
+                                            경고 신호
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {/if}
+        </div>
+    </div>
+
+    <!-- 시나리오 목록 -->
+    <div class="scenarios mb-4">
+        <div class="card">
+            <div class="card-header">
+                <div
+                    class="d-flex justify-content-between align-items-center mb-3"
+                >
+                    <h5 class="mb-0">DB 세션 테스트 시나리오</h5>
+                    <button
+                        class="btn btn-primary"
+                        on:click={executeAllScenarios}
+                    >
+                        전체 시나리오 실행
                     </button>
                 </div>
+
+                <!-- 시나리오 타입 탭 -->
+                <ul class="nav nav-tabs">
+                    <li class="nav-item">
+                        <a
+                            class="nav-link {activeTab === 'basic'
+                                ? 'active'
+                                : ''}"
+                            href="#"
+                            on:click|preventDefault={() =>
+                                (activeTab = "basic")}
+                        >
+                            기본 시나리오
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a
+                            class="nav-link {activeTab === 'advanced'
+                                ? 'active'
+                                : ''}"
+                            href="#"
+                            on:click|preventDefault={() =>
+                                (activeTab = "advanced")}
+                        >
+                            심화 시나리오
+                        </a>
+                    </li>
+                </ul>
             </div>
-        {/each}
+
+            <div class="card-body">
+                <!-- 기본 시나리오 그리드 -->
+                {#if activeTab === "basic"}
+                    <div class="scenarios-grid">
+                        {#each dbScenarios.filter((s) => !s.name.includes("심화")) as scenario}
+                            <div class="scenario-card">
+                                <div class="scenario-content">
+                                    <h6>{scenario.name}</h6>
+                                    <p>{scenario.description}</p>
+                                    <div class="scenario-meta">
+                                        <span class="badge bg-info">
+                                            {scenario.endpoints.length}개 요청
+                                        </span>
+                                        <span class="badge bg-secondary">
+                                            {scenario.iterations}회 반복
+                                        </span>
+                                    </div>
+
+                                    <!-- 실행 상태 표시 추가 -->
+                                    {#if runningScenarios.has(scenario.name)}
+                                        <div class="progress-container">
+                                            <div
+                                                class="progress"
+                                                style="height: 10px;"
+                                            >
+                                                <div
+                                                    class="progress-bar progress-bar-striped progress-bar-animated"
+                                                    role="progressbar"
+                                                    style="width: {(progress[
+                                                        scenario.name
+                                                    ]?.current /
+                                                        progress[scenario.name]
+                                                            ?.total) *
+                                                        100 || 0}%"
+                                                ></div>
+                                            </div>
+                                            <div class="progress-status">
+                                                <small>
+                                                    {progress[scenario.name]
+                                                        ?.status ||
+                                                        "실행 중..."}
+                                                    ({progress[scenario.name]
+                                                        ?.current ||
+                                                        0}/{progress[
+                                                        scenario.name
+                                                    ]?.total || 0})
+                                                </small>
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
+                                <div class="scenario-footer">
+                                    <button
+                                        class="btn btn-primary w-100"
+                                        on:click={() =>
+                                            executeScenario(scenario)}
+                                        disabled={runningScenarios.has(
+                                            scenario.name,
+                                        )}
+                                    >
+                                        {#if runningScenarios.has(scenario.name)}
+                                            <span
+                                                class="spinner-border spinner-border-sm me-2"
+                                                role="status"
+                                            ></span>
+                                            실행 중...
+                                        {:else}
+                                            실행
+                                        {/if}
+                                    </button>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                    <!-- 심화 시나리오 그리드 -->
+                {:else}
+                    <div class="scenarios-grid">
+                        {#each dbScenarios.filter( (s) => s.name.includes("심화"), ) as scenario}
+                            <div class="scenario-card">
+                                <div class="scenario-content">
+                                    <h6>{scenario.name}</h6>
+                                    <p>{scenario.description}</p>
+                                    <div class="scenario-meta">
+                                        <span class="badge bg-info">
+                                            {scenario.endpoints.length}개 요청
+                                        </span>
+                                        <span class="badge bg-secondary">
+                                            {scenario.iterations}회 반복
+                                        </span>
+                                    </div>
+
+                                    <!-- 실행 상태 표시 추가 -->
+                                    {#if runningScenarios.has(scenario.name)}
+                                        <div class="progress-container">
+                                            <div
+                                                class="progress"
+                                                style="height: 10px;"
+                                            >
+                                                <div
+                                                    class="progress-bar progress-bar-striped progress-bar-animated"
+                                                    role="progressbar"
+                                                    style="width: {(progress[
+                                                        scenario.name
+                                                    ]?.current /
+                                                        progress[scenario.name]
+                                                            ?.total) *
+                                                        100 || 0}%"
+                                                ></div>
+                                            </div>
+                                            <div class="progress-status">
+                                                <small>
+                                                    {progress[scenario.name]
+                                                        ?.status ||
+                                                        "실행 중..."}
+                                                    ({progress[scenario.name]
+                                                        ?.current ||
+                                                        0}/{progress[
+                                                        scenario.name
+                                                    ]?.total || 0})
+                                                </small>
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
+                                <div class="scenario-footer">
+                                    <button
+                                        class="btn btn-primary w-100"
+                                        on:click={() =>
+                                            executeScenario(scenario)}
+                                        disabled={runningScenarios.has(
+                                            scenario.name,
+                                        )}
+                                    >
+                                        {#if runningScenarios.has(scenario.name)}
+                                            <span
+                                                class="spinner-border spinner-border-sm me-2"
+                                                role="status"
+                                            ></span>
+                                            실행 중...
+                                        {:else}
+                                            실행
+                                        {/if}
+                                    </button>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
+            </div>
+        </div>
     </div>
 
     <!-- 통합 결과 차트 -->
@@ -376,7 +799,10 @@
                 <h5>시나리오 비교</h5>
             </div>
             <div class="card-body">
-                <div class="chart-container" style="position: relative; height:60vh; width:100%">
+                <div
+                    class="chart-container"
+                    style="position: relative; height:60vh; width:100%"
+                >
                     <canvas id="combinedDbMetricsChart"></canvas>
                 </div>
             </div>
@@ -393,22 +819,47 @@
                         <thead>
                             <tr>
                                 <th>시나리오</th>
-                                <th>평균 총 연결 수</th>
-                                <th>평균 활성 연결 수</th>
-                                <th>평균 가용 연결 수</th>
-                                <th>최대 연결 스레드</th>
-                                <th>최대 실행 스레드</th>
+                                <th>처리량 (req/s)</th>
+                                <th>평균 응답 시간 (ms)</th>
+                                <th>연결 효율성 (%)</th>
+                                <th>연결 활용도 (%)</th>
+                                <th>동시성 영향도</th>
                             </tr>
                         </thead>
                         <tbody>
                             {#each results as result}
-                                <tr class="cursor-pointer" on:click={() => showScenarioDetails(result)}>
+                                <tr
+                                    class="cursor-pointer"
+                                    on:click={() => showScenarioDetails(result)}
+                                >
                                     <td>{result.scenarioName}</td>
-                                    <td>{result.dbMetrics.session.averageTotalConnections?.toFixed(0) || '0'}</td>
-                                    <td>{result.dbMetrics.session.averageActiveConnections?.toFixed(0) || '0'}</td>
-                                    <td>{result.dbMetrics.pool.averageAvailableConnections?.toFixed(0) || '0'}</td>
-                                    <td>{result.dbMetrics.session.maxThreadsConnected || '0'}</td>
-                                    <td>{result.dbMetrics.session.maxThreadsRunning || '0'}</td>
+                                    <td
+                                        >{formatMetric(
+                                            result.analysis.throughput,
+                                        )}</td
+                                    >
+                                    <td
+                                        >{formatMetric(
+                                            result.analysis.averageResponseTime,
+                                        )}</td
+                                    >
+                                    <td
+                                        >{formatMetric(
+                                            result.analysis
+                                                .connectionEfficiency * 100,
+                                        )}%</td
+                                    >
+                                    <td
+                                        >{formatMetric(
+                                            result.analysis
+                                                .connectionUtilization * 100,
+                                        )}%</td
+                                    >
+                                    <td
+                                        >{formatMetric(
+                                            result.analysis.concurrencyImpact,
+                                        )}</td
+                                    >
                                 </tr>
                             {/each}
                         </tbody>
@@ -428,10 +879,75 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h4>{selectedScenario.scenarioName} 상세 정보</h4>
-                <button type="button" class="btn-close" on:click={closeScenarioDetails}></button>
+                <button
+                    type="button"
+                    class="btn-close"
+                    on:click={closeScenarioDetails}
+                ></button>
             </div>
             <div class="modal-body">
                 <div class="row">
+                    <!-- 성능 메트릭스 카드 추가 -->
+                    <div class="col-md-12 mb-4">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">성능 메트릭스</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="metrics-grid">
+                                    <div class="metric-item">
+                                        <span class="label">처리량</span>
+                                        <span class="value"
+                                            >{formatMetric(
+                                                selectedScenario.analysis
+                                                    .throughput,
+                                            )} req/s</span
+                                        >
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="label">평균 응답 시간</span
+                                        >
+                                        <span class="value"
+                                            >{formatMetric(
+                                                selectedScenario.analysis
+                                                    .averageResponseTime,
+                                            )} ms</span
+                                        >
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="label">연결 효율성</span>
+                                        <span class="value"
+                                            >{formatMetric(
+                                                selectedScenario.analysis
+                                                    .connectionEfficiency * 100,
+                                            )}%</span
+                                        >
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="label">연결 재사용률</span>
+                                        <span class="value"
+                                            >{formatMetric(
+                                                selectedScenario.analysis
+                                                    .resourceEfficiency
+                                                    .connectionReuse,
+                                            )}</span
+                                        >
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="label">연결 안정성</span>
+                                        <span class="value"
+                                            >{formatMetric(
+                                                selectedScenario.analysis
+                                                    .resourceEfficiency
+                                                    .connectionStability * 100,
+                                            )}%</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 세션 정보 카드 -->
                     <div class="col-md-6 mb-4">
                         <div class="card h-100">
@@ -442,19 +958,34 @@
                                 <div class="info-grid">
                                     <div class="info-item">
                                         <span class="label">총 연결 수</span>
-                                        <span class="value">{selectedScenario.dbMetrics.session.averageTotalConnections?.toFixed(0) || '0'}</span>
+                                        <span class="value"
+                                            >{selectedScenario.dbMetrics.session.averageTotalConnections?.toFixed(
+                                                0,
+                                            ) || "0"}</span
+                                        >
                                     </div>
                                     <div class="info-item">
                                         <span class="label">활성 연결 수</span>
-                                        <span class="value">{selectedScenario.dbMetrics.session.averageActiveConnections?.toFixed(0) || '0'}</span>
+                                        <span class="value"
+                                            >{selectedScenario.dbMetrics.session.averageActiveConnections?.toFixed(
+                                                0,
+                                            ) || "0"}</span
+                                        >
                                     </div>
                                     <div class="info-item">
                                         <span class="label">연결 스레드</span>
-                                        <span class="value">{selectedScenario.dbMetrics.session.maxThreadsConnected || '0'}</span>
+                                        <span class="value"
+                                            >{selectedScenario.dbMetrics.session
+                                                .maxThreadsConnected ||
+                                                "0"}</span
+                                        >
                                     </div>
                                     <div class="info-item">
                                         <span class="label">실행 스레드</span>
-                                        <span class="value">{selectedScenario.dbMetrics.session.maxThreadsRunning || '0'}</span>
+                                        <span class="value"
+                                            >{selectedScenario.dbMetrics.session
+                                                .maxThreadsRunning || "0"}</span
+                                        >
                                     </div>
                                 </div>
                             </div>
@@ -471,29 +1002,46 @@
                                 <div class="info-grid">
                                     <div class="info-item">
                                         <span class="label">최대 연결 수</span>
-                                        <span class="value">{selectedScenario.dbMetrics.pool.maxConnections || '0'}</span>
+                                        <span class="value"
+                                            >{selectedScenario.dbMetrics.pool
+                                                .maxConnections || "0"}</span
+                                        >
                                     </div>
                                     <div class="info-item">
                                         <span class="label">현재 연결 수</span>
-                                        <span class="value">{selectedScenario.dbMetrics.pool.averageCurrentConnections?.toFixed(0) || '0'}</span>
+                                        <span class="value"
+                                            >{selectedScenario.dbMetrics.pool.averageCurrentConnections?.toFixed(
+                                                0,
+                                            ) || "0"}</span
+                                        >
                                     </div>
                                     <div class="info-item">
                                         <span class="label">가용 연결 수</span>
-                                        <span class="value">{selectedScenario.dbMetrics.pool.averageAvailableConnections?.toFixed(0) || '0'}</span>
+                                        <span class="value"
+                                            >{selectedScenario.dbMetrics.pool.averageAvailableConnections?.toFixed(
+                                                0,
+                                            ) || "0"}</span
+                                        >
                                     </div>
                                     <div class="info-item">
-                                        <span class="label">대기 시간 제한</span>
-                                        <span class="value">{selectedScenario.dbMetrics.pool.waitTimeout || '0'}s</span>
+                                        <span class="label">대기 시간 제한</span
+                                        >
+                                        <span class="value"
+                                            >{selectedScenario.dbMetrics.pool
+                                                .waitTimeout || "0"}s</span
+                                        >
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 모달 차트 -->
                 <div class="modal-chart-container">
-                    <canvas id="dbMetricsChart-modal-{selectedScenario.scenarioName}"></canvas>
+                    <canvas
+                        id="dbMetricsChart-modal-{selectedScenario.scenarioName}"
+                    ></canvas>
                 </div>
             </div>
         </div>
@@ -506,7 +1054,7 @@
         padding: 10px;
         background: white;
         border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .test-type-card {
@@ -514,7 +1062,7 @@
         padding: 1rem;
         border-radius: 0.5rem;
         margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .test-type-card h6 {
@@ -543,13 +1091,13 @@
     .card {
         background: #fff;
         border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         margin-bottom: 20px;
     }
 
     .card-header {
         background-color: #f8f9fa;
-        border-bottom: 1px solid rgba(0,0,0,0.125);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
         padding: 1rem;
     }
 
@@ -565,7 +1113,7 @@
     .cursor-pointer {
         cursor: pointer;
     }
-    
+
     .cursor-pointer:hover {
         background-color: #f8f9fa;
     }
@@ -574,10 +1122,10 @@
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
+        width: 100vw;
+        height: 100vh;
         background-color: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
+        z-index: 1050;
     }
 
     .modal-container {
@@ -589,13 +1137,16 @@
         max-width: 1200px;
         max-height: 90vh;
         overflow-y: auto;
-        z-index: 1001;
-    }
-
-    .modal-content {
+        z-index: 1051;
         background: white;
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-content {
+        background: transparent;
+        border: none;
+        box-shadow: none;
     }
 
     .modal-header {
@@ -616,7 +1167,7 @@
         padding: 1rem;
         background: white;
         border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .info-grid {
@@ -643,4 +1194,212 @@
         font-weight: bold;
         color: #333;
     }
-</style> 
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .metric-explanation-item {
+        background: white;
+        padding: 1.2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e9ecef;
+    }
+
+    .metric-explanation-item h6 {
+        color: #0d6efd;
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+    }
+
+    .metric-explanation-item p {
+        color: #495057;
+        margin-bottom: 0.8rem;
+    }
+
+    .metric-explanation-item ul {
+        padding-left: 1.2rem;
+        margin-bottom: 0;
+    }
+
+    .metric-explanation-item li {
+        color: #6c757d;
+        margin-bottom: 0.4rem;
+    }
+
+    .metrics-tips {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+    }
+
+    .tips-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .tip-item {
+        background: white;
+        padding: 1rem;
+        border-radius: 6px;
+        border-left: 3px solid #0d6efd;
+    }
+
+    .tip-item h7 {
+        font-weight: 600;
+        color: #0d6efd;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .test-purpose {
+        background: #e8f4ff;
+        padding: 1.2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .test-purpose h6 {
+        color: #0d6efd;
+        margin-bottom: 0.8rem;
+    }
+
+    .test-purpose ul {
+        margin-bottom: 0;
+        padding-left: 1.2rem;
+    }
+
+    .test-purpose li {
+        color: #495057;
+        margin-bottom: 0.4rem;
+    }
+
+    .scenarios-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        padding: 1rem 0;
+    }
+
+    .scenario-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        transition:
+            transform 0.2s,
+            box-shadow 0.2s;
+    }
+
+    .scenario-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .scenario-content {
+        padding: 1.25rem;
+        flex-grow: 1;
+    }
+
+    .scenario-content h6 {
+        color: #0d6efd;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+    }
+
+    .scenario-content p {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .scenario-meta {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .scenario-footer {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .nav-tabs {
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .nav-tabs .nav-link {
+        color: #495057;
+        border: 1px solid transparent;
+        border-top-left-radius: 0.25rem;
+        border-top-right-radius: 0.25rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        background-color: #fff;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+
+    .badge {
+        font-weight: 500;
+        padding: 0.5em 0.75em;
+    }
+
+    .progress-container {
+        margin-top: 1rem;
+    }
+
+    .progress {
+        margin-bottom: 0.5rem;
+        background-color: #e9ecef;
+        border-radius: 0.25rem;
+    }
+
+    .progress-bar {
+        background-color: #0d6efd;
+        border-radius: 0.25rem;
+    }
+
+    .progress-status {
+        display: flex;
+        justify-content: space-between;
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+
+    .scenario-card {
+        position: relative;
+    }
+
+    /* 실행 중인 카드 스타일 */
+    .scenario-card.running {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+    }
+
+    /* 버튼 비활성화 스타일 */
+    .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.8;
+    }
+
+    /* 스피너 스타일 */
+    .spinner-border {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.15em;
+    }
+</style>
