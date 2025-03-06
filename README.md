@@ -2,13 +2,50 @@
 
 ## 환경 설정
 
-### docker-compose.yml
+### 애플리케이션 실행
 
-```SHELL
-# docker-compose.yml 파일을 사용하여 FastAPI 앱을 실행한다.
-docker-compose -f docker-compose.dev.yml up -d
+```shell
+# 애플리케이션 스택 실행 (FastAPI, MySQL, Redis, NGINX)
+docker-compose -f docker-compose-loadbalance.yml up -d
 ```
-- FastAPI 앱이 실행되면, http://localhost:7777/docs 에서 API 문서를 확인할 수 있다.
+
+- FastAPI 애플리케이션이 실행되면 http://localhost:7777/docs 에서 API 문서를 확인할 수 있습니다.
+- NGINX 로드 밸런서는 여러 FastAPI 인스턴스에 트래픽을 분산합니다.
+
+### 모니터링 시스템 실행 (선택사항)
+
+애플리케이션 리소스 모니터링이 필요한 경우 다음 명령어로 모니터링 스택을 실행할 수 있습니다:
+
+```shell
+# 모니터링 스택 실행 (Prometheus, Grafana, Exporters)
+docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+#### 모니터링 관련 URL
+
+- **Prometheus**: http://localhost:9090
+  - 메트릭 데이터 수집 및 쿼리
+- **Grafana**: http://localhost:3000 (기본 계정: admin/admin)
+  - 시각화 대시보드
+  - DB 세션 수, CPU 사용량, NGINX 요청 수 등 모니터링
+
+### 전체 시스템 종료
+
+```shell
+# 모니터링 스택 종료
+docker-compose -f docker-compose-monitoring.yml down
+
+# 애플리케이션 스택 종료
+docker-compose -f docker-compose-loadbalance.yml down
+```
+
+### 모니터링 가능한 지표
+
+- NGINX 요청 수 및 처리 시간
+- MySQL DB 세션 수 및 쿼리 성능
+- Redis 연결 및 명령어 처리량
+- CPU, 메모리, 디스크 사용량
+- 애플리케이션 응답 시간 및 오류율
 
 ## 1. 구조
 
