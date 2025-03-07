@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
@@ -13,6 +14,9 @@ from src.domains.standard.presentation.standard_v2 import router_v2 as standard_
 from src.exceptions import PLException, BLException, DLException
 
 app = FastAPI()
+
+# Prometheus instrumentation 설정 - 애플리케이션 시작 전에 설정
+Instrumentator().instrument(app).expose(app)
 
 origins = [
     "http://localhost:5173",
@@ -65,3 +69,8 @@ async def root():
 @app.get("/hello/{name}")
 async def say_hello(name: str):
     return {"message": f"Hello {name}"}
+
+@app.on_event("startup")
+async def startup():
+    # 미들웨어 관련 코드는 제거하고 필요한 다른 초기화 코드만 여기에 배치
+    pass

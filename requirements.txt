@@ -42,6 +42,8 @@ passlib==1.7.4
 pathspec==0.12.1
 platformdirs==4.2.0
 pluggy==1.4.0
+prometheus-fastapi-instrumentator==7.0.2
+prometheus_client==0.21.1
 propcache==0.2.1
 psutil==6.1.1
 psycopg2-binary==2.9.10
@@ -73,4 +75,3 @@ tzdata==2025.1
 urllib3==2.2.1
 uvicorn==0.29.0
 yarl==1.18.3
-docker==7.1.0
