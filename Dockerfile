@@ -31,5 +31,5 @@ RUN useradd -m -d /home/fastAPI-Playground -s /bin/bash app \
 USER app
 WORKDIR /home/fastAPI-Playground
 
-# CMD ["bash", "./scripts/start-dev.sh"]
-CMD ["bash", "./scripts/start-prod.sh"]
+CMD ["bash", "./scripts/start-dev.sh"]
+# CMD ["bash", "./scripts/start-prod.sh"]

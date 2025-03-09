@@ -41,16 +41,18 @@ services:
     restart: on-failure
     networks:
       - fastapi_network
-    deploy:
-      mode: replicated
-      replicas: 3
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
+    ports:
+      - "8000:8000"
+    # deploy:
+    #   mode: replicated
+    #   replicas: 3
+    #   resources:
+    #     limits:
+    #       cpus: '0.50'
+    #       memory: 512M
+    #     reservations:
+    #       cpus: '0.25'
+    #       memory: 256M
 
   db:
     container_name: dev_mysql
@@ -85,6 +87,17 @@ services:
     networks:
       - fastapi_network
 
+  grafana:
+    image: grafana/grafana:9.4.7
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    networks:
+      - fastapi_network
+
 networks:
   fastapi_network:
     name: fastapi_network
@@ -92,3 +105,4 @@ networks:
 
 volumes:
   mysql_data:
+  grafana_data:

@@ -3,7 +3,13 @@
 ## 환경 설정
 
 ### 애플리케이션 실행
+적용 순서
+- 애플리케이션 시작 시
+1. 애플리케이션 스택 실행
+2. 모니터링 스택 실행
 
+- 애플리케이션 설정 수정 시
+1. 애플리케이션 중지 -> 재가동
 ```shell
 # 애플리케이션 스택 실행 (FastAPI, MySQL, Redis, NGINX)
 docker-compose -f docker-compose-loadbalance.yml up -d
