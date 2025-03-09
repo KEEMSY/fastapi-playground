@@ -1,0 +1,1526 @@
+{
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "grafana",
+                    "uid": "-- Grafana --"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "target": {
+                    "limit": 100,
+                    "matchAny": false,
+                    "tags": [],
+                    "type": "dashboard"
+                },
+                "type": "dashboard"
+            }
+        ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 4,
+    "links": [],
+    "liveNow": false,
+    "panels": [
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "fj0YqYtHz"
+            },
+            "description": "A 쿼리: \"NGINX 총 요청\"\nB 쿼리: \"FastAPI 총 요청\"\nC 쿼리: \"FastAPI 성공 트랜잭션(TPS)\"\nD 쿼리: \"MySQL 트랜잭션(TPS)\" (선택적)",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "sum(rate(http_requests_total{instance=\"app:8000\"}[1m]))"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.lineWidth",
+                                "value": 3
+                            },
+                            {
+                                "id": "custom.fillOpacity",
+                                "value": 20
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 38,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "editorMode": "code",
+                    "expr": "rate(nginx_http_requests_total{instance=\"nginx-exporter:9113\"}[1m])",
+                    "hide": false,
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum(rate(http_requests_total{instance=\"app:8000\"}[1m]))",
+                    "hide": false,
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "B"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum(rate(http_requests_total{instance=\"app:8000\", status_code=~\"2..\"}[1m]))",
+                    "hide": false,
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "C"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "editorMode": "code",
+                    "expr": "\nrate(mysql_global_status_com_commit{instance=\"mysql-exporter:9104\"}[1m]) + rate(mysql_global_status_com_rollback{instance=\"mysql-exporter:9104\"}[1m])",
+                    "hide": false,
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "D"
+                }
+            ],
+            "title": "TPS(초당 트랜잭션 수)",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "fj0YqYtHz"
+            },
+            "description": "\"NGINX 요청\", \"FastAPI 요청\"",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 7
+            },
+            "id": 34,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "editorMode": "code",
+                    "expr": "  rate(nginx_http_requests_total{instance=\"nginx-exporter:9113\"}[1m])\n  ",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum(rate(http_requests_total{instance=\"app:8000\"}[1m]))",
+                    "hide": false,
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "B"
+                }
+            ],
+            "title": "NGINX vs FastAPI 요청 흐름",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "fj0YqYtHz"
+            },
+            "description": "1=녹색(정상), 0=빨간색(오류)",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "continuous-GrYlRd"
+                    },
+                    "custom": {
+                        "fillOpacity": 70,
+                        "lineWidth": 1
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 7
+            },
+            "id": 36,
+            "options": {
+                "colWidth": 0.9,
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "rowHeight": 0.9,
+                "showValue": "auto",
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "9.4.7",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "editorMode": "code",
+                    "expr": "  nginx_up{instance=\"nginx-exporter:9113\"}\n  ",
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "editorMode": "code",
+                    "expr": "mysql_up{instance=\"mysql-exporter:9104\"}\n  ",
+                    "hide": false,
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "B"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "editorMode": "code",
+                    "expr": "up{instance=\"app:8000\"}",
+                    "hide": false,
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "C"
+                }
+            ],
+            "title": "애플리케이션 상태 확인",
+            "type": "status-history"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 15
+            },
+            "id": 32,
+            "panels": [],
+            "title": "종합 성능 패널",
+            "type": "row"
+        },
+        {
+            "collapsed": true,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 16
+            },
+            "id": 22,
+            "panels": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 10
+                    },
+                    "id": 24,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "rate(mysql_global_status_queries{instance=\"mysql-exporter:9104\"}[1m])",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "MySQL 초당 쿼리 수",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 10
+                    },
+                    "id": 26,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "mysql_global_status_threads_connected{instance=\"mysql-exporter:9104\"}",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "MySQL 활성 연결 수",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "description": "MySQL이 '느리다'고 판단한 쿼리의 비율입니다(기본적으로 실행에 10초 이상 소요된 쿼리).",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 18
+                    },
+                    "id": 28,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "rate(mysql_global_status_slow_queries{instance=\"mysql-exporter:9104\"}[5m])",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "MySQL 분당 슬로우 쿼리 수",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "description": "\"Select/Show\" , \"Insert/Update/Delete\"",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 18
+                    },
+                    "id": 30,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "rate(mysql_global_status_commands_total{command=~\"select|show\"}[1m])",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        },
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "rate(mysql_global_status_commands_total{command=~\"insert|update|delete\"}[1m])",
+                            "hide": false,
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "B"
+                        }
+                    ],
+                    "title": "MySQL 읽기/쓰기 비율",
+                    "type": "timeseries"
+                }
+            ],
+            "title": "MySQL",
+            "type": "row"
+        },
+        {
+            "collapsed": true,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 17
+            },
+            "id": 12,
+            "panels": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 19
+                    },
+                    "id": 16,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "rate(http_request_duration_seconds_sum{instance=\"app:8000\"}[1m]) / rate(http_request_duration_seconds_count{instance=\"app:8000\"}[1m])",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "FastAPI 평균 응답 시간 (초)",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 19
+                    },
+                    "id": 14,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "rate(http_requests_total{instance=\"app:8000\"}[1m])",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "FastAPI 초당 요청 수",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                }
+                            },
+                            "mappings": []
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 27
+                    },
+                    "id": 18,
+                    "options": {
+                        "legend": {
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "pieType": "pie",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum by(status_code) (rate(http_requests_total{instance=\"app:8000\"}[1m]))",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "FastAPI HTTP 응답 코드 분포",
+                    "type": "piechart"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "description": "단위: MB",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "thresholds"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 27
+                    },
+                    "id": 20,
+                    "options": {
+                        "orientation": "auto",
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": "",
+                            "values": false
+                        },
+                        "showThresholdLabels": false,
+                        "showThresholdMarkers": true
+                    },
+                    "pluginVersion": "9.4.7",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "process_resident_memory_bytes{instance=\"app:8000\"} / 1024 / 1024",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "FastAPI 메모리 사용량 (MB)",
+                    "type": "gauge"
+                }
+            ],
+            "title": "FastAPI",
+            "type": "row"
+        },
+        {
+            "collapsed": true,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 18
+            },
+            "id": 10,
+            "panels": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 9,
+                        "w": 12,
+                        "x": 0,
+                        "y": 20
+                    },
+                    "id": 2,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "rate(nginx_http_requests_total{instance=\"nginx-exporter:9113\"}[1m])",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "NGINX 초당 요청 수",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 9,
+                        "w": 12,
+                        "x": 12,
+                        "y": 20
+                    },
+                    "id": 4,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "nginx_connections_active{instance=\"nginx-exporter:9113\"}",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "NGINX 활성 연결 수",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 29
+                    },
+                    "id": 6,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "nginx_connections_reading{instance=\"nginx-exporter:9113\"}",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        },
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "nginx_connections_writing{instance=\"nginx-exporter:9113\"}",
+                            "hide": false,
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "B"
+                        },
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "nginx_connections_waiting{instance=\"nginx-exporter:9113\"}",
+                            "hide": false,
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "C"
+                        }
+                    ],
+                    "title": "NGINX 연결 상태 분포",
+                    "type": "timeseries"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "fj0YqYtHz"
+                    },
+                    "description": "임계값: 1=녹색(정상), 0=빨간색(오류)",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 29
+                    },
+                    "id": 8,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": true
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "fj0YqYtHz"
+                            },
+                            "editorMode": "code",
+                            "expr": "nginx_up{instance=\"nginx-exporter:9113\"}",
+                            "legendFormat": "__auto",
+                            "range": true,
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "NGINX 서버 상태",
+                    "type": "timeseries"
+                }
+            ],
+            "title": "NGINX",
+            "type": "row"
+        }
+    ],
+    "refresh": "",
+    "revision": 1,
+    "schemaVersion": 38,
+    "style": "dark",
+    "tags": [],
+    "templating": {
+        "list": []
+    },
+    "time": {
+        "from": "now-5m",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "fastapi-playground dashboard",
+    "uid": "waGw5epHk",
+    "version": 2,
+    "weekStart": ""
+}

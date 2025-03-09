@@ -13,6 +13,11 @@
 ```shell
 # 애플리케이션 스택 실행 (FastAPI, MySQL, Redis, NGINX)
 docker-compose -f docker-compose-loadbalance.yml up -d
+
+# 애플리케이션 수정 시
+docker-compose -f docker-compose-loadbalance.yml down
+docker-compose -f docker-compose-loadbalance.yml build app
+docker-compose -f docker-compose-loadbalance.yml up -d
 ```
 
 - FastAPI 애플리케이션이 실행되면 http://localhost:7777/docs 에서 API 문서를 확인할 수 있습니다.
@@ -25,6 +30,10 @@ docker-compose -f docker-compose-loadbalance.yml up -d
 ```shell
 # 모니터링 스택 실행 (Prometheus, Grafana, Exporters)
 docker-compose -f docker-compose-monitoring.yml up -d
+
+# 애플리케이션 수정 시
+docker-compose -f docker-compose-monitoring.yml down
+docker-compose -f docker-compose-monitoring.yml up 
 ```
 
 #### 모니터링 관련 URL
