@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
 
 
@@ -29,7 +29,13 @@ class PoolInfo(BaseModel):
     available_connections: int
     wait_timeout: int
 
+class QueryExecutionInfo(BaseModel):
+    query_number: int
+    delay_seconds: float
+    actual_duration_seconds: float
+
 class StandardDbResponse(BaseModel):
     message: str
     session_info: DatabaseSessionInfo
-    pool_info: Optional[PoolInfo] = None
+    pool_info: PoolInfo
+    query_executions: Optional[List[QueryExecutionInfo]] = None

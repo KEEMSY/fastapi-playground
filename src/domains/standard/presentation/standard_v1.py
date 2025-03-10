@@ -3,6 +3,7 @@ import time
 import os
 import multiprocessing
 import threading
+import random
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -10,9 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.common.constants import APIVersion
 from src.common.presentation.response import BaseErrorResponse, BaseResponse
 from src.common.presentation.router import create_versioned_router
-from src.domains.standard.presentation.schemas.standard import StandardResponse, StandardDbResponse, DatabaseSessionInfo, PoolInfo
+from src.domains.standard.presentation.schemas.standard import StandardResponse, StandardDbResponse, DatabaseSessionInfo, PoolInfo, QueryExecutionInfo
 from src.utils import Logging
 from src.database.database import get_db, get_async_db, async_engine
+from src.domains.standard.database.standard_repository import StandardRepository
+from src.domains.standard.database.standard_async_repository import StandardAsyncRepository
 
 # V1 라우터 생성
 router_v1 = create_versioned_router(
@@ -237,59 +240,21 @@ def sync_test_with_sync(
     worker_id = multiprocessing.current_process().name
     thread_id = threading.current_thread().name
     
-    # Log connection pool status before query execution
-    logger.info(f"Checking connection pool status before query execution")
-    pool_status = db.execute(text("""
-        SELECT 
-            @@max_connections as max_connections,
-            @@wait_timeout as wait_timeout,
-            (SELECT COUNT(*) FROM information_schema.PROCESSLIST) as current_connections
-    """))
-    pool_info = pool_status.mappings().first()
-    logger.info(f"Connection Pool Status - Max: {pool_info['max_connections']}, "
-                f"Current: {pool_info['current_connections']}, "
-                f"Available: {int(pool_info['max_connections']) - int(pool_info['current_connections'])}, "
-                f"Wait Timeout: {pool_info['wait_timeout']}s")
+    # Repository 생성
+    repo = StandardRepository(db)
     
-    # MySQL용 연결 정보 조회
-    result = db.execute(text("""
-        SELECT 
-            COUNT(*) as total_connections,
-            SUM(CASE WHEN COMMAND != 'Sleep' THEN 1 ELSE 0 END) as active_connections
-        FROM information_schema.PROCESSLIST
-    """))
-    db_stats = result.mappings().first()
+    # 데이터베이스 정보 조회
+    session_info, pool_info = repo.get_database_info()
     
-    # MySQL 상태 정보 조회
-    result = db.execute(text("""
-        SHOW GLOBAL STATUS 
-        WHERE Variable_name IN 
-        ('Threads_connected', 'Threads_running', 'Max_used_connections')
-    """))
-    additional_stats = {row[0]: row[1] for row in result}
+    # 로그 기록
+    logger.info(f"Connection Pool Status - Max: {pool_info.max_connections}, "
+                f"Current: {pool_info.current_connections}, "
+                f"Available: {pool_info.available_connections}, "
+                f"Wait Timeout: {pool_info.wait_timeout}s")
     
     # 대기 쿼리 실행
     logger.info(f"Waiting for {timeout} seconds")
-    db.execute(text("SELECT SLEEP(:timeout)"), {"timeout": timeout})
-    
-    session_info = DatabaseSessionInfo(
-        total_connections=db_stats["total_connections"],
-        active_connections=db_stats["active_connections"],
-        threads_connected=additional_stats.get("Threads_connected", "0"),
-        threads_running=additional_stats.get("Threads_running", "0"),
-        max_used_connections=additional_stats.get("Max_used_connections", "0"),
-        max_connections=int(pool_info['max_connections']),
-        current_connections=int(pool_info['current_connections']),
-        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
-        wait_timeout=int(pool_info['wait_timeout'])
-    )
-    
-    pool_info = PoolInfo(
-        max_connections=int(pool_info['max_connections']),
-        current_connections=int(pool_info['current_connections']),
-        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
-        wait_timeout=int(pool_info['wait_timeout'])
-    )
+    repo.execute_sleep_query(timeout)
     
     return BaseResponse(
         data=StandardDbResponse(
@@ -319,61 +284,22 @@ async def async_test_with_async_db_session(
     worker_id = multiprocessing.current_process().name
     thread_id = threading.current_thread().name
     
-    # Log connection pool status before query execution
+    # Repository 생성
+    repo = StandardAsyncRepository(db)
+    
+    # 데이터베이스 정보 조회
     logger.info(f"Checking async connection pool status before query execution")
-    async with async_engine.connect() as conn:
-        pool_status = await conn.execute(text("""
-            SELECT 
-                @@max_connections as max_connections,
-                @@wait_timeout as wait_timeout,
-                (SELECT COUNT(*) FROM information_schema.PROCESSLIST) as current_connections
-        """))
-        pool_info = pool_status.mappings().first()
-        logger.info(f"Connection Pool Status - Max: {pool_info['max_connections']}, "
-                    f"Current: {pool_info['current_connections']}, "
-                    f"Available: {int(pool_info['max_connections']) - int(pool_info['current_connections'])}, "
-                    f"Wait Timeout: {pool_info['wait_timeout']}s")
-        
-        # 현재 데이터베이스 연결 정보 조회
-        result = await conn.execute(text("""
-            SELECT 
-                COUNT(*) as total_connections,
-                SUM(CASE WHEN COMMAND != 'Sleep' THEN 1 ELSE 0 END) as active_connections
-            FROM information_schema.PROCESSLIST
-        """))
-        
-        db_stats = result.mappings().first()
-        
-        # 추가 세션 정보 조회
-        result = await conn.execute(text("""
-            SHOW GLOBAL STATUS 
-            WHERE Variable_name IN 
-            ('Threads_connected', 'Threads_running', 'Max_used_connections')
-        """))
-        additional_stats = {row[0]: row[1] for row in result}
+    session_info, pool_info = await repo.get_database_info()
+    
+    # 로그 기록
+    logger.info(f"Connection Pool Status - Max: {pool_info.max_connections}, "
+                f"Current: {pool_info.current_connections}, "
+                f"Available: {pool_info.available_connections}, "
+                f"Wait Timeout: {pool_info.wait_timeout}s")
     
     # 대기 쿼리 실행
     logger.info(f"Waiting for {timeout} seconds")
-    await db.execute(text("SELECT SLEEP(:timeout)"), {"timeout": timeout})
-    
-    session_info = DatabaseSessionInfo(
-        total_connections=db_stats["total_connections"],
-        active_connections=db_stats["active_connections"],
-        threads_connected=additional_stats.get("Threads_connected", "0"),
-        threads_running=additional_stats.get("Threads_running", "0"),
-        max_used_connections=additional_stats.get("Max_used_connections", "0"),
-        max_connections=int(pool_info['max_connections']),
-        current_connections=int(pool_info['current_connections']),
-        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
-        wait_timeout=int(pool_info['wait_timeout'])
-    )
-    
-    pool_info = PoolInfo(
-        max_connections=int(pool_info['max_connections']),
-        current_connections=int(pool_info['current_connections']),
-        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
-        wait_timeout=int(pool_info['wait_timeout'])
-    )
+    await repo.execute_sleep_query(timeout)
     
     return BaseResponse(
         data=StandardDbResponse(
@@ -402,64 +328,206 @@ async def async_test_with_async_db_session_with_sync(
     worker_id = multiprocessing.current_process().name
     thread_id = threading.current_thread().name
     
-    # Log connection pool status before query execution
+    # Repository 생성
+    repo = StandardRepository(db)
+    
+    # 데이터베이스 정보 조회
     logger.info(f"Checking connection pool status before query execution")
-    pool_status = db.execute(text("""
-        SELECT 
-            @@max_connections as max_connections,
-            @@wait_timeout as wait_timeout,
-            (SELECT COUNT(*) FROM information_schema.PROCESSLIST) as current_connections
-    """))
-    pool_info = pool_status.mappings().first()
-    logger.info(f"Connection Pool Status - Max: {pool_info['max_connections']}, "
-                f"Current: {pool_info['current_connections']}, "
-                f"Available: {int(pool_info['max_connections']) - int(pool_info['current_connections'])}, "
-                f"Wait Timeout: {pool_info['wait_timeout']}s")
+    session_info, pool_info = repo.get_database_info()
     
-    # MySQL용 연결 정보 조회
-    result = db.execute(text("""
-        SELECT 
-            COUNT(*) as total_connections,
-            SUM(CASE WHEN COMMAND != 'Sleep' THEN 1 ELSE 0 END) as active_connections
-        FROM information_schema.PROCESSLIST
-    """))
-    db_stats = result.mappings().first()
+    # 로그 기록
+    logger.info(f"Connection Pool Status - Max: {pool_info.max_connections}, "
+                f"Current: {pool_info.current_connections}, "
+                f"Available: {pool_info.available_connections}, "
+                f"Wait Timeout: {pool_info.wait_timeout}s")
     
-    # MySQL 상태 정보 조회
-    result = db.execute(text("""
-        SHOW GLOBAL STATUS 
-        WHERE Variable_name IN 
-        ('Threads_connected', 'Threads_running', 'Max_used_connections')
-    """))
-    additional_stats = {row[0]: row[1] for row in result}
-    
-    # 대기 쿼리 실행
+    # 대기 쿼리 실행 (비동기 메서드에서 동기 실행)
     logger.info(f"Waiting for {timeout} seconds")
-    db.execute(text("SELECT SLEEP(:timeout)"), {"timeout": timeout})
-    
-    session_info = DatabaseSessionInfo(
-        total_connections=db_stats["total_connections"],
-        active_connections=db_stats["active_connections"],
-        threads_connected=additional_stats.get("Threads_connected", "0"),
-        threads_running=additional_stats.get("Threads_running", "0"),
-        max_used_connections=additional_stats.get("Max_used_connections", "0"),
-        max_connections=int(pool_info['max_connections']),
-        current_connections=int(pool_info['current_connections']),
-        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
-        wait_timeout=int(pool_info['wait_timeout'])
-    )
-    
-    pool_info = PoolInfo(
-        max_connections=int(pool_info['max_connections']),
-        current_connections=int(pool_info['current_connections']),
-        available_connections=int(pool_info['max_connections']) - int(pool_info['current_connections']),
-        wait_timeout=int(pool_info['wait_timeout'])
-    )
+    repo.execute_sleep_query(timeout)
     
     return BaseResponse(
         data=StandardDbResponse(
             message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})",
             session_info=session_info,
             pool_info=pool_info
+        ),
+    )    
+
+@router_v1.get(
+    "/sync-test-with-sync-db-session-multiple-queries",
+    response_model=BaseResponse[StandardDbResponse],
+    description="동기 메서드 내 여러 개의 랜덤 지연시간 쿼리 실행 API",
+    summary="동기 메서드 내 여러 개의 랜덤 지연시간 쿼리 실행 API"
+)
+def sync_test_with_sync_multiple_queries(
+    query_count: int = Query(
+        default=3,
+        ge=1,
+        le=10,
+        description="실행할 쿼리 횟수"
+    ),
+    db: Session = Depends(get_db)
+):
+    process_id = os.getpid()
+    worker_id = multiprocessing.current_process().name
+    thread_id = threading.current_thread().name
+    
+    # Repository 생성
+    repo = StandardRepository(db)
+    
+    # 데이터베이스 정보 조회
+    session_info, pool_info = repo.get_database_info()
+    
+    # 쿼리 실행 정보를 저장할 리스트
+    query_executions = []
+    
+    # 여러 개의 랜덤 지연시간 쿼리 실행
+    logger.info(f"Executing {query_count} queries with random delay")
+    for i in range(query_count):
+        delay = round(random.uniform(0.01, 10), 2)  # 0.01초에서 10초 사이의 랜덤 지연
+        logger.info(f"Query {i+1}/{query_count}: Executing with {delay}s delay")
+        
+        # 쿼리 실행 시간 측정 시작
+        start_time = time.time()
+        repo.execute_sleep_query(delay)
+        end_time = time.time()
+        actual_duration = round(end_time - start_time, 3)
+        
+        # 쿼리 실행 정보 저장
+        query_executions.append(QueryExecutionInfo(
+            query_number=i+1,
+            delay_seconds=delay,
+            actual_duration_seconds=actual_duration
+        ))
+        
+        logger.info(f"Query {i+1}/{query_count}: Completed in {actual_duration}s (planned delay: {delay}s)")
+    
+    return BaseResponse(
+        data=StandardDbResponse(
+            message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})",
+            session_info=session_info,
+            pool_info=pool_info,
+            query_executions=query_executions
+        ),
+    )
+
+
+@router_v1.get(
+    "/async-test-with-async-db-session-multiple-queries",
+    response_model=BaseResponse[StandardDbResponse],
+    description="비동기 메서드 내 여러 개의 랜덤 지연시간 쿼리 실행 API",
+    summary="비동기 메서드 내 여러 개의 랜덤 지연시간 쿼리 실행 API"
+)
+async def async_test_with_async_db_session_multiple_queries(
+    query_count: int = Query(
+        default=3,
+        ge=1,
+        le=10,
+        description="실행할 쿼리 횟수"
+    ),
+    db: AsyncSession = Depends(get_async_db)
+):
+    process_id = os.getpid()
+    worker_id = multiprocessing.current_process().name
+    thread_id = threading.current_thread().name
+    
+    # Repository 생성
+    repo = StandardAsyncRepository(db)
+    
+    # 데이터베이스 정보 조회
+    logger.info(f"Checking async connection pool status before query execution")
+    session_info, pool_info = await repo.get_database_info()
+    
+    # 쿼리 실행 정보를 저장할 리스트
+    query_executions = []
+    
+    # 여러 개의 랜덤 지연시간 쿼리 실행
+    logger.info(f"Executing {query_count} queries with random delay")
+    for i in range(query_count):
+        # delay = round(random.uniform(0.01, 10), 2)  # 0.01초에서 10초 사이의 랜덤 지연
+        delay = round(random.uniform(0.01,2), 2)  # 0.01초에서 10초 사이의 랜덤 지연
+        logger.info(f"Query {i+1}/{query_count}: Executing with {delay}s delay")
+        
+        # 쿼리 실행 시간 측정 시작
+        start_time = time.time()
+        await repo.execute_sleep_query(delay)
+        end_time = time.time()
+        actual_duration = round(end_time - start_time, 3)
+        
+        # 쿼리 실행 정보 저장
+        query_executions.append(QueryExecutionInfo(
+            query_number=i+1,
+            delay_seconds=delay,
+            actual_duration_seconds=actual_duration
+        ))
+        
+        logger.info(f"Query {i+1}/{query_count}: Completed in {actual_duration}s (planned delay: {delay}s)")
+    
+    return BaseResponse(
+        data=StandardDbResponse(
+            message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})",
+            session_info=session_info,
+            pool_info=pool_info,
+            query_executions=query_executions
+        ),
+    )
+
+
+@router_v1.get(
+    "/async-test-with-sync-db-session-multiple-queries",
+    response_model=BaseResponse[StandardDbResponse],
+    description="비동기 메서드 내 동기 DB 세션으로 여러 개의 랜덤 지연시간 쿼리 실행 API",
+    summary="비동기 메서드 내 동기 DB 세션으로 여러 개의 랜덤 지연시간 쿼리 실행 API"
+)
+async def async_test_with_sync_db_session_multiple_queries(
+    query_count: int = Query(
+        default=3,
+        ge=1,
+        le=10,
+        description="실행할 쿼리 횟수"
+    ),
+    db: Session = Depends(get_db)
+):
+    process_id = os.getpid()
+    worker_id = multiprocessing.current_process().name
+    thread_id = threading.current_thread().name
+    
+    # Repository 생성
+    repo = StandardRepository(db)
+    
+    # 데이터베이스 정보 조회
+    logger.info(f"Checking connection pool status before query execution")
+    session_info, pool_info = repo.get_database_info()
+    
+    # 쿼리 실행 정보를 저장할 리스트
+    query_executions = []
+    
+    # 여러 개의 랜덤 지연시간 쿼리 실행
+    logger.info(f"Executing {query_count} queries with random delay")
+    for i in range(query_count):
+        delay = round(random.uniform(0.01, 10), 2)  # 0.01초에서 10초 사이의 랜덤 지연
+        logger.info(f"Query {i+1}/{query_count}: Executing with {delay}s delay")
+        
+        # 쿼리 실행 시간 측정 시작
+        start_time = time.time()
+        repo.execute_sleep_query(delay)
+        end_time = time.time()
+        actual_duration = round(end_time - start_time, 3)
+        
+        # 쿼리 실행 정보 저장
+        query_executions.append(QueryExecutionInfo(
+            query_number=i+1,
+            delay_seconds=delay,
+            actual_duration_seconds=actual_duration
+        ))
+        
+        logger.info(f"Query {i+1}/{query_count}: Completed in {actual_duration}s (planned delay: {delay}s)")
+    
+    return BaseResponse(
+        data=StandardDbResponse(
+            message=f"test (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})",
+            session_info=session_info,
+            pool_info=pool_info,
+            query_executions=query_executions
         ),
     )    
