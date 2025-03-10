@@ -4,6 +4,8 @@
         performanceMetrics,
         TestScenarios,
         runScenario,
+        LoadTestScenarios,
+        runLoadTest,
     } from "../lib/dbTest";
     import Chart from "chart.js/auto";
 
@@ -15,6 +17,8 @@
 
     // 전체 시나리오 사용 (이전에는 3개만 사용)
     const dbScenarios = TestScenarios;
+    // 부하 테스트 시나리오 추가
+    const loadTestScenarios = LoadTestScenarios;
 
     let runningScenarios = new Set();
     let progress = {};
@@ -215,6 +219,74 @@
             }, 0);
         } catch (error) {
             console.error("시나리오 실행 중 오류:", error);
+            progress[scenario.name].status = "오류 발생";
+            progress = { ...progress }; // Svelte 반응성 트리거
+        } finally {
+            runningScenarios.delete(scenario.name);
+            runningScenarios = runningScenarios; // Svelte 반응성 트리거
+        }
+    }
+
+    // 부하 테스트 실행 함수 추가
+    async function executeLoadTest(scenario) {
+        runningScenarios.add(scenario.name);
+        progress[scenario.name] = {
+            current: 0,
+            total: scenario.numberOfUsers * scenario.iterations,
+            status: "준비 중...",
+        };
+        runningScenarios = runningScenarios; // Svelte 반응성 트리거
+        progress = { ...progress }; // Svelte 반응성 트리거
+
+        try {
+            const result = await runLoadTest(scenario);
+            // 결과를 기존 결과 형식에 맞게 변환
+            const formattedResult = {
+                scenarioName: scenario.name,
+                description: scenario.description,
+                totalTime: result.totalTime,
+                averageRequestTime: result.averageResponseTime,
+                successRate: result.successRate,
+                totalRequests: result.totalRequests,
+                analysis: {
+                    throughput:
+                        result.totalRequests / (result.totalTime / 1000),
+                    averageResponseTime: result.averageResponseTime,
+                    // 부하 테스트는 DB 메트릭스가 없으므로 임의 값 사용
+                    connectionEfficiency: 0,
+                    connectionUtilization: 0,
+                    concurrencyImpact: 0,
+                    resourceEfficiency: {
+                        connectionReuse: 0,
+                        connectionStability: 0,
+                    },
+                },
+                // 빈 DB 메트릭스 제공
+                dbMetrics: {
+                    session: {
+                        averageTotalConnections: 0,
+                        averageActiveConnections: 0,
+                        maxThreadsConnected: 0,
+                        maxThreadsRunning: 0,
+                        maxUsedConnections: 0,
+                        timeline: [],
+                    },
+                    pool: {
+                        maxConnections: 0,
+                        averageCurrentConnections: 0,
+                        averageAvailableConnections: 0,
+                        waitTimeout: 0,
+                        timeline: [],
+                    },
+                },
+            };
+
+            results = results.filter(
+                (r) => r.scenarioName !== formattedResult.scenarioName,
+            );
+            results = [...results, formattedResult];
+        } catch (error) {
+            console.error("부하 테스트 실행 중 오류:", error);
             progress[scenario.name].status = "오류 발생";
             progress = { ...progress }; // Svelte 반응성 트리거
         } finally {
@@ -611,7 +683,7 @@
                     </button>
                 </div>
 
-                <!-- 시나리오 타입 탭 -->
+                <!-- 시나리오 타입 탭 - 부하 테스트 탭 추가 -->
                 <ul class="nav nav-tabs">
                     <li class="nav-item">
                         <a
@@ -646,6 +718,20 @@
                             on:click|preventDefault={() => (activeTab = "real")}
                         >
                             실제 시나리오
+                        </a>
+                    </li>
+                    <!-- 부하 테스트 탭 추가 -->
+                    <li class="nav-item">
+                        <a
+                            class="nav-link {activeTab === 'loadtest'
+                                ? 'active'
+                                : ''}"
+                            href="#"
+                            on:click|preventDefault={() =>
+                                (activeTab = "loadtest")}
+                        >
+                            <span class="badge bg-danger me-1">NEW</span>
+                            부하 테스트
                         </a>
                     </li>
                 </ul>
@@ -863,6 +949,90 @@
                                             실행 중...
                                         {:else}
                                             실행
+                                        {/if}
+                                    </button>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else if activeTab === "loadtest"}
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="alert alert-info" role="alert">
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                                부하 테스트는 다수의 사용자가 동시에 여러 쿼리를
+                                요청하는 상황을 시뮬레이션합니다. 사용자 수와 쿼리
+                                수가 많을수록 서버의 부하가 증가합니다.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="scenarios-grid">
+                        {#each loadTestScenarios as scenario}
+                            <div class="scenario-card">
+                                <div class="scenario-content">
+                                    <h6>{scenario.name}</h6>
+                                    <p>{scenario.description}</p>
+                                    <div class="scenario-meta">
+                                        <span class="badge bg-danger">
+                                            {scenario.numberOfUsers}명 사용자
+                                        </span>
+                                        <span class="badge bg-warning">
+                                            요청당 {scenario.queryCount}개 쿼리
+                                        </span>
+                                        <span class="badge bg-secondary">
+                                            총 {scenario.numberOfUsers *
+                                                scenario.iterations}개 요청
+                                        </span>
+                                    </div>
+
+                                    <!-- 실행 상태 표시 - 실행 중일 때만 표시되도록 조건 수정 -->
+                                    {#if runningScenarios.has(scenario.name) && progress[scenario.name]}
+                                        <div class="progress-container">
+                                            <div
+                                                class="progress"
+                                                style="height: 10px;"
+                                            >
+                                                <div
+                                                    class="progress-bar progress-bar-striped progress-bar-animated"
+                                                    role="progressbar"
+                                                    style="width: {(progress[
+                                                        scenario.name
+                                                    ].current /
+                                                        progress[scenario.name]
+                                                            .total) *
+                                                        100}%"
+                                                ></div>
+                                            </div>
+                                            <div class="progress-status">
+                                                <small>
+                                                    {progress[scenario.name]
+                                                        .status}
+                                                    ({progress[scenario.name]
+                                                        .current}/{progress[
+                                                        scenario.name
+                                                    ].total})
+                                                </small>
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
+                                <div class="scenario-footer">
+                                    <button
+                                        class="btn btn-danger w-100"
+                                        on:click={() =>
+                                            executeLoadTest(scenario)}
+                                        disabled={runningScenarios.has(
+                                            scenario.name,
+                                        )}
+                                    >
+                                        {#if runningScenarios.has(scenario.name)}
+                                            <span
+                                                class="spinner-border spinner-border-sm me-2"
+                                                role="status"
+                                            ></span>
+                                            실행 중...
+                                        {:else}
+                                            부하 테스트 실행
                                         {/if}
                                     </button>
                                 </div>
@@ -1483,5 +1653,31 @@
         width: 1rem;
         height: 1rem;
         border-width: 0.15em;
+    }
+
+    /* 부하 테스트 관련 스타일 추가 */
+    .badge.bg-danger {
+        background-color: #dc3545 !important;
+    }
+
+    .badge.bg-warning {
+        background-color: #ffc107 !important;
+        color: #212529;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+        background-color: #bb2d3b;
+        border-color: #b02a37;
+    }
+
+    .alert-info {
+        background-color: #cff4fc;
+        border-color: #b6effb;
+        color: #055160;
     }
 </style>

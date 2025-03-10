@@ -20,16 +20,33 @@ export const EndpointType = {
     ASYNC_WITH_ASYNC_DB: {
         path: 'async-test-with-async-db-session',
         name: '비동기 메서드 + 비동기 DB 세션'
+    },
+    // 새로운 다중 쿼리 엔드포인트 추가
+    SYNC_WITH_SYNC_DB_MULTIPLE: {
+        path: 'sync-test-with-sync-db-session-multiple-queries',
+        name: '동기 메서드 + 동기 DB 세션 (다중 쿼리)'
+    },
+    ASYNC_WITH_SYNC_DB_MULTIPLE: {
+        path: 'async-test-with-sync-db-session-multiple-queries',
+        name: '비동기 메서드 + 동기 DB 세션 (다중 쿼리)'
+    },
+    ASYNC_WITH_ASYNC_DB_MULTIPLE: {
+        path: 'async-test-with-async-db-session-multiple-queries',
+        name: '비동기 메서드 + 비동기 DB 세션 (다중 쿼리)'
     }
 };
 
 // 개별 API 호출 함수
-async function callEndpoint(endpoint, timeout = null) {
+async function callEndpoint(endpoint, timeout = null, queryCount = null) {
     const startTime = performance.now();
     const url = new URL(`http://localhost:7777/api/v1/standard/${endpoint.path}`);
 
     if (timeout !== null) {
         url.searchParams.append('timeout', timeout);
+    }
+
+    if (queryCount !== null) {
+        url.searchParams.append('query_count', queryCount);
     }
 
     try {
@@ -41,6 +58,7 @@ async function callEndpoint(endpoint, timeout = null) {
             endpoint: endpoint.name,
             path: endpoint.path,
             timeout: timeout,
+            queryCount: queryCount,
             success: true,
             time: endTime - startTime,
             data
@@ -51,6 +69,7 @@ async function callEndpoint(endpoint, timeout = null) {
             endpoint: endpoint.name,
             path: endpoint.path,
             timeout: timeout,
+            queryCount: queryCount,
             success: false,
             time: endTime - startTime,
             error: error.message
@@ -379,4 +398,180 @@ function analyzeResults(metrics) {
             }
         }
     };
-} 
+}
+
+// 부하 테스트를 위한 함수
+export async function runLoadTest(config) {
+    const {
+        endpointType, // 테스트할 엔드포인트 타입
+        numberOfUsers, // 동시 사용자 수
+        queryCount, // 각 요청에서 실행할 쿼리 수
+        iterations = 1 // 테스트 반복 횟수
+    } = config;
+
+    console.log(`Starting load test: ${numberOfUsers} users, ${queryCount} queries per request, ${iterations} iterations`);
+    const startTime = performance.now();
+    let allResults = [];
+    let currentRequests = 0;
+
+    // 전체 요청 수 계산
+    const totalRequests = numberOfUsers * iterations;
+
+    // 부하 테스트 중 진행 상황 업데이트를 위한 함수
+    const updateProgress = (completed) => {
+        performanceMetrics.update(metrics => ({
+            ...metrics,
+            currentProgress: completed,
+            totalRequests,
+            scenarioName: `부하 테스트: ${numberOfUsers}명 사용자, 요청당 ${queryCount}개 쿼리, ${iterations}회 반복`
+        }));
+    };
+
+    // 각 반복마다 요청 실행
+    for (let iter = 0; iter < iterations; iter++) {
+        console.log(`Starting iteration ${iter + 1}/${iterations}`);
+
+        // 모든 사용자의 요청을 동시에 실행
+        const userPromises = Array(numberOfUsers).fill().map(async (_, index) => {
+            const response = await callEndpoint(endpointType, null, queryCount);
+            currentRequests++;
+
+            // 진행 상황 업데이트
+            if (currentRequests % Math.max(1, Math.floor(numberOfUsers / 10)) === 0) {
+                updateProgress(currentRequests);
+            }
+
+            return response;
+        });
+
+        // 모든 사용자 요청 동시 실행
+        const results = await Promise.all(userPromises);
+        allResults = [...allResults, ...results];
+    }
+
+    const endTime = performance.now();
+    const totalTime = endTime - startTime;
+
+    // 결과 분석
+    const metrics = {
+        testName: `부하 테스트: ${numberOfUsers}명 사용자, 요청당 ${queryCount}개 쿼리, ${iterations}회 반복`,
+        numberOfUsers,
+        queryCount,
+        totalRequests,
+        totalTime,
+        successRate: allResults.filter(r => r.success).length / allResults.length,
+        averageResponseTime: allResults.reduce((acc, result) => acc + result.time, 0) / allResults.length,
+        minResponseTime: Math.min(...allResults.map(r => r.time)),
+        maxResponseTime: Math.max(...allResults.map(r => r.time)),
+        iterations,
+        // 쿼리 실행 정보 분석 추가
+        queryExecutions: allResults.flatMap(r => r.data?.data?.query_executions || []),
+        endpointResults: allResults
+    };
+
+    // 쿼리 실행 정보 분석
+    if (metrics.queryExecutions.length > 0) {
+        metrics.queryAnalysis = {
+            totalQueries: metrics.queryExecutions.length,
+            averageQueryDelay: metrics.queryExecutions.reduce((acc, q) => acc + q.delay_seconds, 0) / metrics.queryExecutions.length,
+            averageQueryDuration: metrics.queryExecutions.reduce((acc, q) => acc + q.actual_duration_seconds, 0) / metrics.queryExecutions.length,
+            maxQueryDuration: Math.max(...metrics.queryExecutions.map(q => q.actual_duration_seconds)),
+            minQueryDuration: Math.min(...metrics.queryExecutions.map(q => q.actual_duration_seconds))
+        };
+    }
+
+    console.log('Load Test Results:', metrics);
+    return metrics;
+}
+
+// 새로운 다중 쿼리 부하 테스트 시나리오 추가
+export const LoadTestScenarios = [
+    {
+        name: "다중 쿼리 부하 테스트 1: 동기 DB 세션 (10명 사용자)",
+        description: "10명의 사용자가 각각 5개의 쿼리를 동시에 요청 (동기 DB 세션)",
+        endpointType: EndpointType.SYNC_WITH_SYNC_DB_MULTIPLE,
+        numberOfUsers: 10,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "다중 쿼리 부하 테스트 2: 비동기 DB 세션 (10명 사용자)",
+        description: "10명의 사용자가 각각 5개의 쿼리를 동시에 요청 (비동기 DB 세션)",
+        endpointType: EndpointType.ASYNC_WITH_ASYNC_DB_MULTIPLE,
+        numberOfUsers: 10,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "다중 쿼리 부하 테스트 3: 동기 DB 세션 (30명 사용자)",
+        description: "30명의 사용자가 각각 5개의 쿼리를 동시에 요청 (동기 DB 세션)",
+        endpointType: EndpointType.SYNC_WITH_SYNC_DB_MULTIPLE,
+        numberOfUsers: 30,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "다중 쿼리 부하 테스트 4: 비동기 DB 세션 (30명 사용자)",
+        description: "30명의 사용자가 각각 5개의 쿼리를 동시에 요청 (비동기 DB 세션)",
+        endpointType: EndpointType.ASYNC_WITH_ASYNC_DB_MULTIPLE,
+        numberOfUsers: 30,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "다중 쿼리 부하 테스트 5: 동기 DB 세션 (50명 사용자)",
+        description: "50명의 사용자가 각각 5개의 쿼리를 동시에 요청 (동기 DB 세션)",
+        endpointType: EndpointType.SYNC_WITH_SYNC_DB_MULTIPLE,
+        numberOfUsers: 50,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "다중 쿼리 부하 테스트 6: 비동기 DB 세션 (50명 사용자)",
+        description: "50명의 사용자가 각각 5개의 쿼리를 동시에 요청 (비동기 DB 세션)",
+        endpointType: EndpointType.ASYNC_WITH_ASYNC_DB_MULTIPLE,
+        numberOfUsers: 50,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "다중 쿼리 부하 테스트 7: 동기 DB 세션 (70명 사용자)",
+        description: "70명의 사용자가 각각 5개의 쿼리를 동시에 요청 (동기 DB 세션)",
+        endpointType: EndpointType.SYNC_WITH_SYNC_DB_MULTIPLE,
+        numberOfUsers: 70,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "다중 쿼리 부하 테스트 8: 비동기 DB 세션 (70명 사용자)",
+        description: "70명의 사용자가 각각 5개의 쿼리를 동시에 요청 (비동기 DB 세션)",
+        endpointType: EndpointType.ASYNC_WITH_ASYNC_DB_MULTIPLE,
+        numberOfUsers: 70,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "다중 쿼리 부하 테스트 9: 동기 DB 세션 (100명 사용자)",
+        description: "100명의 사용자가 각각 5개의 쿼리를 동시에 요청 (동기 DB 세션)",
+        endpointType: EndpointType.SYNC_WITH_SYNC_DB_MULTIPLE,
+        numberOfUsers: 100,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "다중 쿼리 부하 테스트 10: 비동기 DB 세션 (100명 사용자)",
+        description: "100명의 사용자가 각각 5개의 쿼리를 동시에 요청 (비동기 DB 세션)",
+        endpointType: EndpointType.ASYNC_WITH_ASYNC_DB_MULTIPLE,
+        numberOfUsers: 100,
+        queryCount: 5,
+        iterations: 1
+    },
+    {
+        name: "비동기 vs 동기 DB 세션 비교 (비동기 메서드에서)",
+        description: "비동기 메서드에서 동기/비동기 DB 세션의 성능 비교 (50명 사용자)",
+        endpointType: EndpointType.ASYNC_WITH_SYNC_DB_MULTIPLE,
+        numberOfUsers: 50,
+        queryCount: 5,
+        iterations: 1
+    }
+]; 
