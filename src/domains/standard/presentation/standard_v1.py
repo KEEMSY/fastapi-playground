@@ -384,7 +384,7 @@ def sync_test_with_sync_multiple_queries(
     # 여러 개의 랜덤 지연시간 쿼리 실행
     logger.info(f"Executing {query_count} queries with random delay")
     for i in range(query_count):
-        delay = round(random.uniform(0.01, 10), 2)  # 0.01초에서 10초 사이의 랜덤 지연
+        delay = round(random.uniform(0.01, 2), 2)  # 0.01초에서 2초 사이의 랜덤 지연
         logger.info(f"Query {i+1}/{query_count}: Executing with {delay}s delay")
         
         # 쿼리 실행 시간 측정 시작
@@ -445,7 +445,7 @@ async def async_test_with_async_db_session_multiple_queries(
     logger.info(f"Executing {query_count} queries with random delay")
     for i in range(query_count):
         # delay = round(random.uniform(0.01, 10), 2)  # 0.01초에서 10초 사이의 랜덤 지연
-        delay = round(random.uniform(0.01,2), 2)  # 0.01초에서 10초 사이의 랜덤 지연
+        delay = round(random.uniform(0.01, 2), 2)  # 0.01초에서 2초 사이의 랜덤 지연
         logger.info(f"Query {i+1}/{query_count}: Executing with {delay}s delay")
         
         # 쿼리 실행 시간 측정 시작
@@ -505,7 +505,7 @@ async def async_test_with_sync_db_session_multiple_queries(
     # 여러 개의 랜덤 지연시간 쿼리 실행
     logger.info(f"Executing {query_count} queries with random delay")
     for i in range(query_count):
-        delay = round(random.uniform(0.01, 10), 2)  # 0.01초에서 10초 사이의 랜덤 지연
+        delay = round(random.uniform(0.01, 2), 2)  # 0.01초에서 2초 사이의 랜덤 지연
         logger.info(f"Query {i+1}/{query_count}: Executing with {delay}s delay")
         
         # 쿼리 실행 시간 측정 시작
