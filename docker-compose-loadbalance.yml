@@ -23,17 +23,17 @@ services:
       - "8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT}
-      SYNC_SQLALCHEMY_DATABASE_URL: mysql+pymysql://root:test@db:3306/fastapi_playground
-      ASYNC_SQLALCHEMY_DATABASE_URL: mysql+asyncmy://root:test@db:3306/fastapi_playground
+      SYNC_SQLALCHEMY_DATABASE_URL: postgresql://root:test@db:5432/fastapi_playground
+      ASYNC_SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://root:test@db:5432/fastapi_playground
       REDIS_URL: ${REDIS_URL}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      DATABASE_URL: mysql+pymysql://root:test@db:3306/fastapi_playground
-      MYSQL_USER: root
-      MYSQL_PASSWORD: test
-      MYSQL_HOST: db
-      MYSQL_PORT: 3306
-      MYSQL_DATABASE: fastapi_playground
+      DATABASE_URL: postgresql://root:test@db:5432/fastapi_playground
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: test
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: fastapi_playground
       ENABLE_METRICS: "true"
     depends_on:
       db:
@@ -55,22 +55,20 @@ services:
     #       memory: 256M
 
   db:
-    container_name: dev_mysql
-    image: mysql:8.0
-    command: --default-authentication-plugin=mysql_native_password
+    container_name: dev_postgres
+    image: postgres:15
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     environment:
-      MYSQL_ROOT_PASSWORD: test
-      MYSQL_DATABASE: fastapi_playground
-      MYSQL_USER: fastapi_user
-      MYSQL_PASSWORD: test
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: fastapi_playground
     ports:
-      - "13306:3306"
+      - "15432:5432"
     networks:
       - fastapi_network
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: [ "CMD-SHELL", "pg_isready -U root -d fastapi_playground" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -104,5 +102,5 @@ networks:
     external: false
 
 volumes:
-  mysql_data:
+  postgres_data:
   grafana_data:

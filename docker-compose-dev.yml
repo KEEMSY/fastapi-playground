@@ -11,17 +11,17 @@ services:
       - "7777:8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT}
-      SYNC_SQLALCHEMY_DATABASE_URL: mysql+pymysql://root:test@db:3306/fastapi_playground
-      ASYNC_SQLALCHEMY_DATABASE_URL: mysql+asyncmy://root:test@db:3306/fastapi_playground
+      SYNC_SQLALCHEMY_DATABASE_URL: postgresql://root:test@db:5432/fastapi_playground
+      ASYNC_SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://root:test@db:5432/fastapi_playground
       REDIS_URL: ${REDIS_URL}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      DATABASE_URL: mysql+pymysql://root:test@db:3306/fastapi_playground
-      MYSQL_USER: root
-      MYSQL_PASSWORD: test
-      MYSQL_HOST: db
-      MYSQL_PORT: 3306
-      MYSQL_DATABASE: fastapi_playground
+      DATABASE_URL: postgresql://root:test@db:5432/fastapi_playground
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: test
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: fastapi_playground
 
     depends_on:
       db:
@@ -32,28 +32,26 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.50' # CPU 사용량을 50%로 제한
-          memory: 512M # 메모리 사용량을 512MB로 제한
+          cpus: '0.50'
+          memory: 512M
         reservations:
-          cpus: '0.25' # 최소 25%의 CPU 보장
-          memory: 256M # 최소 256MB의 메모리 보장
+          cpus: '0.25'
+          memory: 256M
   db:
-    container_name: dev_mysql
-    image: mysql:8.0
-    command: --default-authentication-plugin=mysql_native_password
+    container_name: dev_postgres
+    image: postgres:15
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     environment:
-      MYSQL_ROOT_PASSWORD: test # Set the root password here
-      MYSQL_DATABASE: fastapi_playground # Optional: Define a database to be created
-      MYSQL_USER: fastapi_user # Define a regular user (not root)
-      MYSQL_PASSWORD: test # Set password for the regular user
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: fastapi_playground
     ports:
-      - "13306:3306"
+      - "15432:5432"
     networks:
       - fastapi_network
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: [ "CMD-SHELL", "pg_isready -U root -d fastapi_playground" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,4 +72,4 @@ networks:
 
 
 volumes:
-  mysql_data:
+  postgres_data:
