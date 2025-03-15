@@ -1,9 +1,80 @@
-# created by virtualenv automatically
-venv
-.Python
+# ===== 운영체제 관련 파일 =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ===== 개발 환경 및 IDE =====
+# Visual Studio Code
+.vscode/
+.history/
+*.code-workspace
+
+# JetBrains IDEs (IntelliJ, PyCharm, etc)
 .idea/
+*.iml
+*.iws
+.idea_modules/
+
+# ===== Python 관련 =====
+# 가상환경
+venv/
+env/
+ENV/
+.Python
 pyvenv.cfg
-.pytest_cache
-.ruff_cache
+
+# 컴파일된 파일
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 테스트 관련
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# 린터 및 포맷터
+.ruff_cache/
+.mypy_cache/
+.pylint.d/
+
+# ===== 로컬 개발 환경 =====
+# 로컬 설정 및 캐시
+.cache/
+.local/
+
+# 환경변수 및 시크릿
+.env
+.env.local
+.env.*.local
+*.env
+
+# ===== 데이터베이스 =====
+# 마이그레이션 파일
 alembic/versions/*
+*.sqlite
+*.db
+
+# ===== 로그 파일 =====
 logs/
+*.log
+
+# ===== 빌드 및 배포 =====
+# 배포 파일
+dist/
+build/
+*.egg-info/
