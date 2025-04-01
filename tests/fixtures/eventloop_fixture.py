@@ -28,7 +28,8 @@ pytest_asyncio 의 기본 event_loop fixture 는 scope 가 Function 이며,
 #     asyncio.get_event_loop().close()
 
 
-# 방법 3.
+# 방법 3. 최신 pytest-asyncio 버전에서 실제로 이 옵션을 지원하지 않아 경고문이 발생
+# 경고문을 무시하도록 pytest.ini 내 filterwarnings 옵션 추가
 import asyncio
 import pytest_asyncio
 

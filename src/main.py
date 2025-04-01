@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.cors import CORSMiddleware
@@ -13,7 +14,15 @@ from src.domains.standard.presentation.standard_v1 import router_v1 as standard_
 from src.domains.standard.presentation.standard_v2 import router_v2 as standard_router_v2
 from src.exceptions import PLException, BLException, DLException
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 시작 시
+    print("애플리케이션 시작")
+    yield
+    # 종료 시
+    print("애플리케이션 종료")
+
+app = FastAPI(lifespan=lifespan)
 
 # Prometheus instrumentation 설정 - 애플리케이션 시작 전에 설정
 Instrumentator().instrument(app).expose(app)
@@ -69,8 +78,3 @@ async def root():
 @app.get("/hello/{name}")
 async def say_hello(name: str):
     return {"message": f"Hello {name}"}
-
-@app.on_event("startup")
-async def startup():
-    # 미들웨어 관련 코드는 제거하고 필요한 다른 초기화 코드만 여기에 배치
-    pass

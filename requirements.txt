@@ -72,6 +72,6 @@ starlette==0.37.2
 tomli==2.0.1
 typing_extensions==4.10.0
 tzdata==2025.1
-urllib3==2.2.1
+urllib3==1.26.16
 uvicorn==0.29.0
 yarl==1.18.3

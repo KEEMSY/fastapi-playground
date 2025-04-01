@@ -4,8 +4,8 @@
 #   - 2025.02.14 기준 시작
 from .fixtures.db_fixtures import test_db_container, db_session, db_inspector, async_db_session 
 from .fixtures.client_fixtures import client, async_client
-from .fixtures.eventloop_fixture import event_loop
 from .fixtures.redis_fixture import redis_client
+from .fixtures.eventloop_fixture import event_loop
 ###
 
 # os.environ["ENVIRONMENT"] = "TESTING"
