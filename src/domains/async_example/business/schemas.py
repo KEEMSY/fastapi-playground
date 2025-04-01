@@ -1,7 +1,7 @@
 import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from src.domains.user.schemas import User
 
@@ -14,20 +14,20 @@ class AsyncExampleSchema(BaseModel):
     modify_date: Optional[datetime.datetime] = None
     user: Optional[User] = None
 
-    class Config:
-        orm_mode = True
-        extra = 'forbid'
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra='forbid'
+    )
 
 
 class ASyncExampleSchemaList(BaseModel):
     total: int
     example_list: list[AsyncExampleSchema] = []
 
-    class Config:
-        orm_mode = True
-        extra = 'forbid'
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra='forbid'
+    )
 
 
 class RelatedAsyncExampleSchema(BaseModel):
@@ -38,17 +38,17 @@ class RelatedAsyncExampleSchema(BaseModel):
     modify_date: Optional[datetime.datetime] = None
     async_example_id: Optional[int] = None
 
-    class Config:
-        orm_mode = True
-        extra = 'forbid'
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra='forbid'
+    )
 
 
 class RelatedAsyncExampleSchemaList(BaseModel):
     total: int
     example_list: list[AsyncExampleSchema] = []
 
-    class Config:
-        orm_mode = True
-        extra = 'forbid'
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra='forbid'
+    )
