@@ -7,7 +7,7 @@ class StandardAsyncRepository:
         self.db = db
     
     async def get_connection_pool_info(self):
-        """연결 풀 정보 조회 - 직접 세션 사용"""
+        """연결 풀 정보 조회"""
         result = await self.db.execute(text("""
             SELECT 
                 current_setting('max_connections')::int as max_connections,
@@ -17,7 +17,7 @@ class StandardAsyncRepository:
         return result.mappings().first()
     
     async def get_session_stats(self):
-        """데이터베이스 세션 통계 조회 - 직접 세션 사용"""
+        """데이터베이스 세션 통계 조회"""
         result = await self.db.execute(text("""
             SELECT 
                 count(*) as total_connections,
@@ -27,7 +27,7 @@ class StandardAsyncRepository:
         return result.mappings().first()
     
     async def get_additional_stats(self):
-        """추가 세션 정보 조회 - 직접 세션 사용"""
+        """추가 세션 정보 조회"""
         result = await self.db.execute(text("""
             SELECT 
                 'Threads_connected' as name, 
@@ -41,7 +41,7 @@ class StandardAsyncRepository:
                 'Max_used_connections' as name,
                 (SELECT current_setting('max_connections')::text) as value
         """))
-        return {row.name: row.value for row in result}
+        return {row.name: str(row.value) for row in result}
     
     async def execute_sleep_query(self, delay):
         """지연 쿼리 실행"""

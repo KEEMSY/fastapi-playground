@@ -11,13 +11,13 @@ services:
       - fastapi_network
     restart: always
 
-  # MySQL 메트릭 수집기
-  mysql-exporter:
-    image: prom/mysqld-exporter:v0.14.0
+  # PostgreSQL 메트릭 수집기
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
     environment:
-      DATA_SOURCE_NAME: "root:test@(dev_mysql:3306)/"
+      DATA_SOURCE_NAME: "postgresql://root:test@dev_postgres:5432/fastapi_playground?sslmode=disable"
     ports:
-      - "9104:9104"
+      - "9187:9187"
     networks:
       - fastapi_network
     restart: always

@@ -11,9 +11,9 @@ scrape_configs:
     static_configs:
       - targets: ["nginx-exporter:9113"]
 
-  - job_name: "mysql"
+  - job_name: "postgresql"
     static_configs:
-      - targets: ["mysql-exporter:9104"]
+      - targets: ["postgres-exporter:9187"]
 
   - job_name: "node-exporter"
     static_configs:

@@ -23,13 +23,13 @@ services:
       - "8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT}
-      SYNC_SQLALCHEMY_DATABASE_URL: postgresql://root:test@db:5432/fastapi_playground
-      ASYNC_SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://root:test@db:5432/fastapi_playground
+      SYNC_SQLALCHEMY_DATABASE_URL: postgresql://postgres:test@db:5432/fastapi_playground
+      ASYNC_SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://postgres:test@db:5432/fastapi_playground
       REDIS_URL: ${REDIS_URL}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      DATABASE_URL: postgresql://root:test@db:5432/fastapi_playground
-      POSTGRES_USER: root
+      DATABASE_URL: postgresql://postgres:test@db:5432/fastapi_playground
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: test
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
@@ -60,7 +60,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: root
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: test
       POSTGRES_DB: fastapi_playground
     ports:
@@ -68,7 +68,7 @@ services:
     networks:
       - fastapi_network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U root -d fastapi_playground" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d fastapi_playground" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,17 +85,6 @@ services:
     networks:
       - fastapi_network
 
-  grafana:
-    image: grafana/grafana:9.4.7
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
-    ports:
-      - "3000:3000"
-    networks:
-      - fastapi_network
-
 networks:
   fastapi_network:
     name: fastapi_network
@@ -103,4 +92,3 @@ networks:
 
 volumes:
   postgres_data:
-  grafana_data:
