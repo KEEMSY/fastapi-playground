@@ -8,6 +8,7 @@
         runLoadTest,
     } from "../lib/dbTest";
     import Chart from "chart.js/auto";
+    import ScrollTestArea from "../components/ScrollTestArea.svelte";
 
     let charts = {};
     let results = []; // 여러 결과를 저장하기 위한 배열
@@ -22,6 +23,8 @@
 
     let runningScenarios = new Set();
     let progress = {};
+
+    let activeScrollTest = null;
 
     // performanceMetrics 구독 추가
     performanceMetrics.subscribe((metrics) => {
@@ -479,6 +482,26 @@
     function formatMetric(value) {
         return typeof value === "number" ? value.toFixed(2) : "0";
     }
+
+    // 스크롤 테스트 시작 함수
+    function startScrollTest(scenario) {
+        console.log("Starting scroll test for:", scenario.name);
+        activeScrollTest = scenario;
+    }
+
+    // 스크롤 이벤트 핸들러
+    async function handleScroll() {
+        if (activeScrollTest) {
+            console.log("Executing scroll test");
+            // 결과를 results 배열에 추가하지 않고 단순히 실행만 합니다
+            await runScenario(activeScrollTest);
+
+            // 테스트 완료 후 스크롤 영역 제거
+            setTimeout(() => {
+                activeScrollTest = null;
+            }, 1000);
+        }
+    }
 </script>
 
 <div class="container mt-4">
@@ -755,58 +778,56 @@
                                         </span>
                                     </div>
 
-                                    <!-- 실행 상태 표시 추가 -->
-                                    {#if runningScenarios.has(scenario.name)}
-                                        <div class="progress-container">
-                                            <div
-                                                class="progress"
-                                                style="height: 10px;"
+                                    <!-- 스크롤 테스트 영역 -->
+                                    {#if scenario.isScrollTest}
+                                        <div class="scroll-test-controls">
+                                            <button
+                                                class="btn btn-primary mb-2"
+                                                on:click={() =>
+                                                    startScrollTest(scenario)}
+                                                disabled={runningScenarios.has(
+                                                    scenario.name,
+                                                )}
                                             >
-                                                <div
-                                                    class="progress-bar progress-bar-striped progress-bar-animated"
-                                                    role="progressbar"
-                                                    style="width: {(progress[
-                                                        scenario.name
-                                                    ]?.current /
-                                                        progress[scenario.name]
-                                                            ?.total) *
-                                                        100 || 0}%"
-                                                ></div>
-                                            </div>
-                                            <div class="progress-status">
-                                                <small>
-                                                    {progress[scenario.name]
-                                                        ?.status ||
-                                                        "실행 중..."}
-                                                    ({progress[scenario.name]
-                                                        ?.current ||
-                                                        0}/{progress[
-                                                        scenario.name
-                                                    ]?.total || 0})
-                                                </small>
-                                            </div>
+                                                {#if runningScenarios.has(scenario.name)}
+                                                    스크롤 테스트 중...
+                                                {:else}
+                                                    스크롤 테스트 시작
+                                                {/if}
+                                            </button>
                                         </div>
-                                    {/if}
-                                </div>
-                                <div class="scenario-footer">
-                                    <button
-                                        class="btn btn-primary w-100"
-                                        on:click={() =>
-                                            executeScenario(scenario)}
-                                        disabled={runningScenarios.has(
-                                            scenario.name,
-                                        )}
-                                    >
-                                        {#if runningScenarios.has(scenario.name)}
-                                            <span
-                                                class="spinner-border spinner-border-sm me-2"
-                                                role="status"
-                                            ></span>
-                                            실행 중...
-                                        {:else}
-                                            실행
+
+                                        {#if activeScrollTest === scenario}
+                                            <div class="scroll-test-container">
+                                                <div class="alert alert-info">
+                                                    스크롤하여 테스트를
+                                                    실행하세요. 최하단 도달 시
+                                                    자동으로 최상단으로
+                                                    이동합니다.
+                                                </div>
+                                                <ScrollTestArea
+                                                    height="300px"
+                                                    itemCount={50}
+                                                    onScroll={() =>
+                                                        executeScenario(
+                                                            scenario,
+                                                        )}
+                                                />
+                                            </div>
                                         {/if}
-                                    </button>
+                                    {:else}
+                                        <!-- 기존 시나리오 실행 버튼 -->
+                                        <button
+                                            class="btn btn-primary"
+                                            on:click={() =>
+                                                executeScenario(scenario)}
+                                            disabled={runningScenarios.has(
+                                                scenario.name,
+                                            )}
+                                        >
+                                            실행
+                                        </button>
+                                    {/if}
                                 </div>
                             </div>
                         {/each}
@@ -827,58 +848,56 @@
                                         </span>
                                     </div>
 
-                                    <!-- 실행 상태 표시 추가 -->
-                                    {#if runningScenarios.has(scenario.name)}
-                                        <div class="progress-container">
-                                            <div
-                                                class="progress"
-                                                style="height: 10px;"
+                                    <!-- 스크롤 테스트 영역 -->
+                                    {#if scenario.isScrollTest}
+                                        <div class="scroll-test-controls">
+                                            <button
+                                                class="btn btn-primary mb-2"
+                                                on:click={() =>
+                                                    startScrollTest(scenario)}
+                                                disabled={runningScenarios.has(
+                                                    scenario.name,
+                                                )}
                                             >
-                                                <div
-                                                    class="progress-bar progress-bar-striped progress-bar-animated"
-                                                    role="progressbar"
-                                                    style="width: {(progress[
-                                                        scenario.name
-                                                    ]?.current /
-                                                        progress[scenario.name]
-                                                            ?.total) *
-                                                        100 || 0}%"
-                                                ></div>
-                                            </div>
-                                            <div class="progress-status">
-                                                <small>
-                                                    {progress[scenario.name]
-                                                        ?.status ||
-                                                        "실행 중..."}
-                                                    ({progress[scenario.name]
-                                                        ?.current ||
-                                                        0}/{progress[
-                                                        scenario.name
-                                                    ]?.total || 0})
-                                                </small>
-                                            </div>
+                                                {#if runningScenarios.has(scenario.name)}
+                                                    스크롤 테스트 중...
+                                                {:else}
+                                                    스크롤 테스트 시작
+                                                {/if}
+                                            </button>
                                         </div>
-                                    {/if}
-                                </div>
-                                <div class="scenario-footer">
-                                    <button
-                                        class="btn btn-primary w-100"
-                                        on:click={() =>
-                                            executeScenario(scenario)}
-                                        disabled={runningScenarios.has(
-                                            scenario.name,
-                                        )}
-                                    >
-                                        {#if runningScenarios.has(scenario.name)}
-                                            <span
-                                                class="spinner-border spinner-border-sm me-2"
-                                                role="status"
-                                            ></span>
-                                            실행 중...
-                                        {:else}
-                                            실행
+
+                                        {#if activeScrollTest === scenario}
+                                            <div class="scroll-test-container">
+                                                <div class="alert alert-info">
+                                                    스크롤하여 테스트를
+                                                    실행하세요. 최하단 도달 시
+                                                    자동으로 최상단으로
+                                                    이동합니다.
+                                                </div>
+                                                <ScrollTestArea
+                                                    height="300px"
+                                                    itemCount={50}
+                                                    onScroll={() =>
+                                                        executeScenario(
+                                                            scenario,
+                                                        )}
+                                                />
+                                            </div>
                                         {/if}
-                                    </button>
+                                    {:else}
+                                        <!-- 기존 시나리오 실행 버튼 -->
+                                        <button
+                                            class="btn btn-primary"
+                                            on:click={() =>
+                                                executeScenario(scenario)}
+                                            disabled={runningScenarios.has(
+                                                scenario.name,
+                                            )}
+                                        >
+                                            실행
+                                        </button>
+                                    {/if}
                                 </div>
                             </div>
                         {/each}
@@ -899,58 +918,56 @@
                                         </span>
                                     </div>
 
-                                    <!-- 실행 상태 표시 추가 -->
-                                    {#if runningScenarios.has(scenario.name)}
-                                        <div class="progress-container">
-                                            <div
-                                                class="progress"
-                                                style="height: 10px;"
+                                    <!-- 스크롤 테스트 영역 -->
+                                    {#if scenario.isScrollTest}
+                                        <div class="scroll-test-controls">
+                                            <button
+                                                class="btn btn-primary mb-2"
+                                                on:click={() =>
+                                                    startScrollTest(scenario)}
+                                                disabled={runningScenarios.has(
+                                                    scenario.name,
+                                                )}
                                             >
-                                                <div
-                                                    class="progress-bar progress-bar-striped progress-bar-animated"
-                                                    role="progressbar"
-                                                    style="width: {(progress[
-                                                        scenario.name
-                                                    ]?.current /
-                                                        progress[scenario.name]
-                                                            ?.total) *
-                                                        100 || 0}%"
-                                                ></div>
-                                            </div>
-                                            <div class="progress-status">
-                                                <small>
-                                                    {progress[scenario.name]
-                                                        ?.status ||
-                                                        "실행 중..."}
-                                                    ({progress[scenario.name]
-                                                        ?.current ||
-                                                        0}/{progress[
-                                                        scenario.name
-                                                    ]?.total || 0})
-                                                </small>
-                                            </div>
+                                                {#if runningScenarios.has(scenario.name)}
+                                                    스크롤 테스트 중...
+                                                {:else}
+                                                    스크롤 테스트 시작
+                                                {/if}
+                                            </button>
                                         </div>
-                                    {/if}
-                                </div>
-                                <div class="scenario-footer">
-                                    <button
-                                        class="btn btn-primary w-100"
-                                        on:click={() =>
-                                            executeScenario(scenario)}
-                                        disabled={runningScenarios.has(
-                                            scenario.name,
-                                        )}
-                                    >
-                                        {#if runningScenarios.has(scenario.name)}
-                                            <span
-                                                class="spinner-border spinner-border-sm me-2"
-                                                role="status"
-                                            ></span>
-                                            실행 중...
-                                        {:else}
-                                            실행
+
+                                        {#if activeScrollTest === scenario}
+                                            <div class="scroll-test-container">
+                                                <div class="alert alert-info">
+                                                    스크롤하여 테스트를
+                                                    실행하세요. 최하단 도달 시
+                                                    자동으로 최상단으로
+                                                    이동합니다.
+                                                </div>
+                                                <ScrollTestArea
+                                                    height="300px"
+                                                    itemCount={50}
+                                                    onScroll={() =>
+                                                        executeScenario(
+                                                            scenario,
+                                                        )}
+                                                />
+                                            </div>
                                         {/if}
-                                    </button>
+                                    {:else}
+                                        <!-- 기존 시나리오 실행 버튼 -->
+                                        <button
+                                            class="btn btn-primary"
+                                            on:click={() =>
+                                                executeScenario(scenario)}
+                                            disabled={runningScenarios.has(
+                                                scenario.name,
+                                            )}
+                                        >
+                                            실행
+                                        </button>
+                                    {/if}
                                 </div>
                             </div>
                         {/each}
@@ -1679,5 +1696,19 @@
         background-color: #cff4fc;
         border-color: #b6effb;
         color: #055160;
+    }
+
+    .scroll-test-container {
+        margin: 1rem 0;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+
+    .scroll-info {
+        margin-bottom: 1rem;
+        text-align: center;
+        font-size: 0.9rem;
     }
 </style>

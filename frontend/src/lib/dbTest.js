@@ -6,6 +6,12 @@ export const performanceMetrics = writable({
     endpointMetrics: []
 });
 
+// 스크롤 테스트 상태 관리를 위한 store 추가
+export const scrollTestStore = writable({
+    activeScrollTest: null,
+    scrollTestCompleted: false
+});
+
 // API 엔드포인트 타입 정의
 export const EndpointType = {
     // DB 세션 요청 타입 수정
@@ -249,8 +255,52 @@ export const TestScenarios = [
             }))
         ],
         iterations: 2
+    },
+    // 스크롤 테스트 시나리오 추가
+    {
+        name: "스크롤 테스트 - 동기 DB 세션",
+        description: "스크롤 이벤트마다 동기 DB 세션 요청 실행",
+        endpoints: [
+            {
+                type: EndpointType.SYNC_WITH_SYNC_DB,
+                timeout: 1
+            }
+        ],
+        iterations: 1,
+        isScrollTest: true
+    },
+    {
+        name: "스크롤 테스트 - 비동기 DB 세션",
+        description: "스크롤 이벤트마다 비동기 DB 세션 요청 실행",
+        endpoints: [
+            {
+                type: EndpointType.ASYNC_WITH_ASYNC_DB,
+                timeout: 1
+            }
+        ],
+        iterations: 1,
+        isScrollTest: true
     }
 ];
+
+// 스크롤 이벤트 핸들러 수정
+async function handleScroll() {
+    scrollTestStore.update(state => {
+        if (!state.scrollTestCompleted && state.activeScrollTest) {
+            console.log("테스트 실행 시작");
+            state.scrollTestCompleted = true;
+            runScenario(state.activeScrollTest);
+
+            setTimeout(() => {
+                scrollTestStore.set({
+                    activeScrollTest: null,
+                    scrollTestCompleted: false
+                });
+            }, 2000);
+        }
+        return state;
+    });
+}
 
 // 시나리오 실행 함수
 export async function runScenario(scenarioConfig) {
@@ -383,18 +433,31 @@ export async function runScenario(scenarioConfig) {
 
 // 결과 분석을 위한 메트릭스 수정
 function analyzeResults(metrics) {
+    // 스크롤 테스트인 경우 분석 메트릭스를 생략
+    if (metrics.scenarioConfig?.isScrollTest) {
+        return {
+            ...metrics,
+            analysis: null
+        };
+    }
+
+    // 일반 테스트인 경우 기존 분석 수행
     return {
         ...metrics,
         analysis: {
-            // 연결 효율성 = (사용 중인 연결 수 / 최대 연결 수) × 100
-            connectionEfficiency: ((metrics.dbMetrics.pool.maxConnections - metrics.dbMetrics.pool.averageAvailableConnections) / metrics.dbMetrics.pool.maxConnections),
-            connectionUtilization: metrics.dbMetrics.session.averageActiveConnections / metrics.dbMetrics.session.averageTotalConnections,
+            connectionEfficiency: metrics.dbMetrics?.pool ?
+                ((metrics.dbMetrics.pool.maxConnections - metrics.dbMetrics.pool.averageAvailableConnections) / metrics.dbMetrics.pool.maxConnections) : 0,
+            connectionUtilization: metrics.dbMetrics?.session ?
+                (metrics.dbMetrics.session.averageActiveConnections / metrics.dbMetrics.session.averageTotalConnections) : 0,
             throughput: metrics.totalRequests / (metrics.totalTime / 1000),
             averageResponseTime: metrics.totalTime / metrics.totalRequests,
-            concurrencyImpact: metrics.dbMetrics.session.maxThreadsRunning / metrics.dbMetrics.session.maxThreadsConnected,
+            concurrencyImpact: metrics.dbMetrics?.session ?
+                (metrics.dbMetrics.session.maxThreadsRunning / metrics.dbMetrics.session.maxThreadsConnected) : 0,
             resourceEfficiency: {
-                connectionReuse: metrics.totalRequests / metrics.dbMetrics.session.averageTotalConnections,
-                connectionStability: 1 - (Math.abs(metrics.dbMetrics.session.maxThreadsConnected - metrics.dbMetrics.session.averageActiveConnections) / metrics.dbMetrics.session.maxThreadsConnected)
+                connectionReuse: metrics.dbMetrics?.session ?
+                    (metrics.totalRequests / metrics.dbMetrics.session.averageTotalConnections) : 0,
+                connectionStability: metrics.dbMetrics?.session ?
+                    (1 - Math.abs(metrics.dbMetrics.session.maxThreadsConnected - metrics.dbMetrics.session.averageActiveConnections) / metrics.dbMetrics.session.maxThreadsConnected) : 0
             }
         }
     };
