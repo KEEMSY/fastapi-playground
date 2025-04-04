@@ -41,8 +41,6 @@ services:
     restart: on-failure
     networks:
       - fastapi_network
-    ports:
-      - "8000:8000"
     # deploy:
     #   mode: replicated
     #   replicas: 3
