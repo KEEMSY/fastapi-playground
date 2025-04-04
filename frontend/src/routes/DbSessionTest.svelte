@@ -25,6 +25,8 @@
     let progress = {};
 
     let activeScrollTest = null;
+    let autoTestMode = false;
+    let openTestCards = new Set(); // 열린 테스트 카드들을 추적하기 위한 Set
 
     // performanceMetrics 구독 추가
     performanceMetrics.subscribe((metrics) => {
@@ -502,6 +504,20 @@
             }, 1000);
         }
     }
+
+    function startAutoTest(scenario) {
+        autoTestMode = true;
+        activeScrollTest = scenario;
+    }
+
+    function toggleTestCard(scenario) {
+        if (openTestCards.has(scenario.name)) {
+            openTestCards.delete(scenario.name);
+        } else {
+            openTestCards.add(scenario.name);
+        }
+        openTestCards = openTestCards; // Svelte 반응성 트리거
+    }
 </script>
 
 <div class="container mt-4">
@@ -781,37 +797,98 @@
                                     <!-- 스크롤 테스트 영역 -->
                                     {#if scenario.isScrollTest}
                                         <div class="scroll-test-controls">
-                                            <button
-                                                class="btn btn-primary mb-2"
-                                                on:click={() =>
-                                                    startScrollTest(scenario)}
-                                                disabled={runningScenarios.has(
-                                                    scenario.name,
-                                                )}
-                                            >
-                                                {#if runningScenarios.has(scenario.name)}
-                                                    스크롤 테스트 중...
-                                                {:else}
-                                                    스크롤 테스트 시작
-                                                {/if}
-                                            </button>
+                                            <div class="btn-group mb-2">
+                                                <button
+                                                    class="btn btn-primary"
+                                                    on:click={() => {
+                                                        startScrollTest(
+                                                            scenario,
+                                                        );
+                                                        toggleTestCard(
+                                                            scenario,
+                                                        );
+                                                    }}
+                                                    disabled={runningScenarios.has(
+                                                        scenario.name,
+                                                    )}
+                                                >
+                                                    {#if runningScenarios.has(scenario.name)}
+                                                        스크롤 테스트 중...
+                                                    {:else}
+                                                        스크롤 테스트 시작
+                                                    {/if}
+                                                </button>
+                                                <button
+                                                    class="btn btn-success"
+                                                    on:click={() => {
+                                                        startAutoTest(scenario);
+                                                        toggleTestCard(
+                                                            scenario,
+                                                        );
+                                                    }}
+                                                    disabled={runningScenarios.has(
+                                                        scenario.name,
+                                                    )}
+                                                >
+                                                    {#if runningScenarios.has(scenario.name)}
+                                                        자동 테스트 중...
+                                                    {:else}
+                                                        자동 테스트 시작
+                                                    {/if}
+                                                </button>
+                                            </div>
                                         </div>
 
-                                        {#if activeScrollTest === scenario}
+                                        {#if openTestCards.has(scenario.name)}
                                             <div class="scroll-test-container">
                                                 <div class="alert alert-info">
-                                                    스크롤하여 테스트를
-                                                    실행하세요. 최하단 도달 시
-                                                    자동으로 최상단으로
-                                                    이동합니다.
+                                                    {#if autoTestMode}
+                                                        자동으로 1000개의 요청을
+                                                        순차적으로 전송합니다.
+                                                    {:else}
+                                                        스크롤하여 테스트를
+                                                        실행하세요. 1000개의
+                                                        요청이 완료되면 자동으로
+                                                        종료됩니다.
+                                                    {/if}
                                                 </div>
                                                 <ScrollTestArea
                                                     height="300px"
                                                     itemCount={50}
-                                                    onScroll={() =>
-                                                        executeScenario(
-                                                            scenario,
-                                                        )}
+                                                    maxRequests={1000}
+                                                    autoTest={autoTestMode}
+                                                    onScroll={async (
+                                                        requestCount,
+                                                    ) => {
+                                                        try {
+                                                            await executeScenario(
+                                                                scenario,
+                                                            );
+                                                            return true;
+                                                        } catch (error) {
+                                                            console.error(
+                                                                "시나리오 실행 중 오류:",
+                                                                error,
+                                                            );
+                                                            return false;
+                                                        }
+                                                    }}
+                                                    on:testComplete={(
+                                                        event,
+                                                    ) => {
+                                                        const {
+                                                            requestsCompletionTime,
+                                                            totalCompletionTime,
+                                                            responseCount,
+                                                        } = event.detail;
+                                                        console.log(`
+                                                            ${autoTestMode ? "자동" : "스크롤"} 테스트 최종 결과:
+                                                            - 요청 전송 완료 시간: ${requestsCompletionTime}초
+                                                            - 전체 완료 시간: ${totalCompletionTime}초
+                                                            - 총 처리된 요청 수: ${responseCount}개
+                                                        `);
+                                                        autoTestMode = false;
+                                                    }}
                                                 />
                                             </div>
                                         {/if}
@@ -851,37 +928,98 @@
                                     <!-- 스크롤 테스트 영역 -->
                                     {#if scenario.isScrollTest}
                                         <div class="scroll-test-controls">
-                                            <button
-                                                class="btn btn-primary mb-2"
-                                                on:click={() =>
-                                                    startScrollTest(scenario)}
-                                                disabled={runningScenarios.has(
-                                                    scenario.name,
-                                                )}
-                                            >
-                                                {#if runningScenarios.has(scenario.name)}
-                                                    스크롤 테스트 중...
-                                                {:else}
-                                                    스크롤 테스트 시작
-                                                {/if}
-                                            </button>
+                                            <div class="btn-group mb-2">
+                                                <button
+                                                    class="btn btn-primary"
+                                                    on:click={() => {
+                                                        startScrollTest(
+                                                            scenario,
+                                                        );
+                                                        toggleTestCard(
+                                                            scenario,
+                                                        );
+                                                    }}
+                                                    disabled={runningScenarios.has(
+                                                        scenario.name,
+                                                    )}
+                                                >
+                                                    {#if runningScenarios.has(scenario.name)}
+                                                        스크롤 테스트 중...
+                                                    {:else}
+                                                        스크롤 테스트 시작
+                                                    {/if}
+                                                </button>
+                                                <button
+                                                    class="btn btn-success"
+                                                    on:click={() => {
+                                                        startAutoTest(scenario);
+                                                        toggleTestCard(
+                                                            scenario,
+                                                        );
+                                                    }}
+                                                    disabled={runningScenarios.has(
+                                                        scenario.name,
+                                                    )}
+                                                >
+                                                    {#if runningScenarios.has(scenario.name)}
+                                                        자동 테스트 중...
+                                                    {:else}
+                                                        자동 테스트 시작
+                                                    {/if}
+                                                </button>
+                                            </div>
                                         </div>
 
-                                        {#if activeScrollTest === scenario}
+                                        {#if openTestCards.has(scenario.name)}
                                             <div class="scroll-test-container">
                                                 <div class="alert alert-info">
-                                                    스크롤하여 테스트를
-                                                    실행하세요. 최하단 도달 시
-                                                    자동으로 최상단으로
-                                                    이동합니다.
+                                                    {#if autoTestMode}
+                                                        자동으로 1000개의 요청을
+                                                        순차적으로 전송합니다.
+                                                    {:else}
+                                                        스크롤하여 테스트를
+                                                        실행하세요. 1000개의
+                                                        요청이 완료되면 자동으로
+                                                        종료됩니다.
+                                                    {/if}
                                                 </div>
                                                 <ScrollTestArea
                                                     height="300px"
                                                     itemCount={50}
-                                                    onScroll={() =>
-                                                        executeScenario(
-                                                            scenario,
-                                                        )}
+                                                    maxRequests={1000}
+                                                    autoTest={autoTestMode}
+                                                    onScroll={async (
+                                                        requestCount,
+                                                    ) => {
+                                                        try {
+                                                            await executeScenario(
+                                                                scenario,
+                                                            );
+                                                            return true;
+                                                        } catch (error) {
+                                                            console.error(
+                                                                "시나리오 실행 중 오류:",
+                                                                error,
+                                                            );
+                                                            return false;
+                                                        }
+                                                    }}
+                                                    on:testComplete={(
+                                                        event,
+                                                    ) => {
+                                                        const {
+                                                            requestsCompletionTime,
+                                                            totalCompletionTime,
+                                                            responseCount,
+                                                        } = event.detail;
+                                                        console.log(`
+                                                            ${autoTestMode ? "자동" : "스크롤"} 테스트 최종 결과:
+                                                            - 요청 전송 완료 시간: ${requestsCompletionTime}초
+                                                            - 전체 완료 시간: ${totalCompletionTime}초
+                                                            - 총 처리된 요청 수: ${responseCount}개
+                                                        `);
+                                                        autoTestMode = false;
+                                                    }}
                                                 />
                                             </div>
                                         {/if}
@@ -921,37 +1059,98 @@
                                     <!-- 스크롤 테스트 영역 -->
                                     {#if scenario.isScrollTest}
                                         <div class="scroll-test-controls">
-                                            <button
-                                                class="btn btn-primary mb-2"
-                                                on:click={() =>
-                                                    startScrollTest(scenario)}
-                                                disabled={runningScenarios.has(
-                                                    scenario.name,
-                                                )}
-                                            >
-                                                {#if runningScenarios.has(scenario.name)}
-                                                    스크롤 테스트 중...
-                                                {:else}
-                                                    스크롤 테스트 시작
-                                                {/if}
-                                            </button>
+                                            <div class="btn-group mb-2">
+                                                <button
+                                                    class="btn btn-primary"
+                                                    on:click={() => {
+                                                        startScrollTest(
+                                                            scenario,
+                                                        );
+                                                        toggleTestCard(
+                                                            scenario,
+                                                        );
+                                                    }}
+                                                    disabled={runningScenarios.has(
+                                                        scenario.name,
+                                                    )}
+                                                >
+                                                    {#if runningScenarios.has(scenario.name)}
+                                                        스크롤 테스트 중...
+                                                    {:else}
+                                                        스크롤 테스트 시작
+                                                    {/if}
+                                                </button>
+                                                <button
+                                                    class="btn btn-success"
+                                                    on:click={() => {
+                                                        startAutoTest(scenario);
+                                                        toggleTestCard(
+                                                            scenario,
+                                                        );
+                                                    }}
+                                                    disabled={runningScenarios.has(
+                                                        scenario.name,
+                                                    )}
+                                                >
+                                                    {#if runningScenarios.has(scenario.name)}
+                                                        자동 테스트 중...
+                                                    {:else}
+                                                        자동 테스트 시작
+                                                    {/if}
+                                                </button>
+                                            </div>
                                         </div>
 
-                                        {#if activeScrollTest === scenario}
+                                        {#if openTestCards.has(scenario.name)}
                                             <div class="scroll-test-container">
                                                 <div class="alert alert-info">
-                                                    스크롤하여 테스트를
-                                                    실행하세요. 최하단 도달 시
-                                                    자동으로 최상단으로
-                                                    이동합니다.
+                                                    {#if autoTestMode}
+                                                        자동으로 1000개의 요청을
+                                                        순차적으로 전송합니다.
+                                                    {:else}
+                                                        스크롤하여 테스트를
+                                                        실행하세요. 1000개의
+                                                        요청이 완료되면 자동으로
+                                                        종료됩니다.
+                                                    {/if}
                                                 </div>
                                                 <ScrollTestArea
                                                     height="300px"
                                                     itemCount={50}
-                                                    onScroll={() =>
-                                                        executeScenario(
-                                                            scenario,
-                                                        )}
+                                                    maxRequests={1000}
+                                                    autoTest={autoTestMode}
+                                                    onScroll={async (
+                                                        requestCount,
+                                                    ) => {
+                                                        try {
+                                                            await executeScenario(
+                                                                scenario,
+                                                            );
+                                                            return true;
+                                                        } catch (error) {
+                                                            console.error(
+                                                                "시나리오 실행 중 오류:",
+                                                                error,
+                                                            );
+                                                            return false;
+                                                        }
+                                                    }}
+                                                    on:testComplete={(
+                                                        event,
+                                                    ) => {
+                                                        const {
+                                                            requestsCompletionTime,
+                                                            totalCompletionTime,
+                                                            responseCount,
+                                                        } = event.detail;
+                                                        console.log(`
+                                                            ${autoTestMode ? "자동" : "스크롤"} 테스트 최종 결과:
+                                                            - 요청 전송 완료 시간: ${requestsCompletionTime}초
+                                                            - 전체 완료 시간: ${totalCompletionTime}초
+                                                            - 총 처리된 요청 수: ${responseCount}개
+                                                        `);
+                                                        autoTestMode = false;
+                                                    }}
                                                 />
                                             </div>
                                         {/if}
@@ -1710,5 +1909,21 @@
         margin-bottom: 1rem;
         text-align: center;
         font-size: 0.9rem;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-success {
+        background-color: #198754;
+        border-color: #198754;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background-color: #157347;
+        border-color: #146c43;
     }
 </style>
