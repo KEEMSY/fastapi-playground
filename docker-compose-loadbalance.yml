@@ -61,6 +61,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: test
       POSTGRES_DB: fastapi_playground
+      POSTGRES_REPLICATION_MODE: master
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replicapass
     ports:
       - "15432:5432"
     networks:
@@ -70,6 +73,39 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "max_wal_senders=5"
+      - "-c"
+      - "max_replication_slots=5"
+
+  db_replica:
+    container_name: dev_postgres_replica
+    image: postgres:15
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: fastapi_playground
+      POSTGRES_REPLICATION_MODE: slave
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replicapass
+      POSTGRES_MASTER_HOST: db
+      POSTGRES_MASTER_PORT: 5432
+    ports:
+      - "15433:5432"
+    networks:
+      - fastapi_network
+    depends_on:
+      - db
+    command:
+      - "postgres"
+      - "-c"
+      - "hot_standby=on"
 
   redis:
     container_name: dev_redis
@@ -90,3 +126,4 @@ networks:
 
 volumes:
   postgres_data:
+  postgres_replica_data:
