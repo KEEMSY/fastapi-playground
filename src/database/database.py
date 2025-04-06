@@ -4,6 +4,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from functools import wraps
+import random
 
 import aioredis
 import redis
@@ -44,63 +45,101 @@ Base = declarative_base(metadata=metadata)
 
 logger = logging.getLogger(__name__)
 
-# 비동기 엔진 설정 수정
-async_engine = create_async_engine(
+# Primary Async DB 연결 설정
+async_engine_primary = create_async_engine(
     ASYNC_SQLALCHEMY_DATABASE_URL,
-    pool_size=20,           # 기본 풀 크기 증가
-    max_overflow=30,        # 최대 초과 연결 수 증가
-    pool_timeout=10,        # 타임아웃 감소
-    pool_recycle=3600,      # 커넥션 재활용 시간
-    pool_pre_ping=True,     # 연결 상태 확인
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=10,
+    pool_recycle=3600,
+    pool_pre_ping=True,
     echo=False
 )
 
-# 동기 엔진 설정 수정
+# Replica Async DB 연결 설정
+ASYNC_SQLALCHEMY_REPLICA_URL = ASYNC_SQLALCHEMY_DATABASE_URL.replace(':5432', ':15433')
+async_engine_replica = create_async_engine(
+    ASYNC_SQLALCHEMY_REPLICA_URL,
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=10,
+    pool_recycle=3600,
+    pool_pre_ping=True,
+    echo=False
+)
+
+# Sync Primary 엔진 설정
 engine = create_engine(
     SYNC_SQLALCHEMY_DATABASE_URL,
-    pool_size=20,           # 기본 풀 크기 증가
-    max_overflow=30,        # 최대 초과 연결 수 증가
-    pool_timeout=10,        # 타임아웃 감소
-    pool_recycle=3600,      # 커넥션 재활용 시간
-    pool_pre_ping=True,     # 연결 상태 확인
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=10,
+    pool_recycle=3600,
+    pool_pre_ping=True,
     echo=False
 )
 
-async def get_async_db():
+# Sync Replica 엔진 설정
+SYNC_SQLALCHEMY_REPLICA_URL = SYNC_SQLALCHEMY_DATABASE_URL.replace(':5432', ':15433')
+engine_replica = create_engine(
+    SYNC_SQLALCHEMY_REPLICA_URL,
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=10,
+    pool_recycle=3600,
+    pool_pre_ping=True,
+    echo=False
+)
+
+async def get_read_engine():
+    """읽기 작업을 위한 엔진 선택 (Primary or Replica)"""
+    engines = [async_engine_primary] + [async_engine_replica]
+    return random.choice(engines)
+
+def get_sync_read_engine():
+    """동기 읽기 작업을 위한 엔진 선택 (Primary or Replica)"""
+    engines = [engine] + [engine_replica]
+    return random.choice(engines)
+
+async def get_async_read_db():
+    """읽기 전용 DB 연결 - Primary/Replica 로드밸런싱"""
     retry_count = 0
-    while retry_count <= 3:  # 재시도 횟수 감소
-        async with AsyncSession(bind=async_engine) as db:
+    while retry_count <= 3:
+        engine = await get_read_engine()
+        async with AsyncSession(bind=engine) as db:
             try:
                 yield db
                 break
             except SQLAlchemyError as e:
                 await db.rollback()
-                logger.error(f"Async database error: {e}, retrying...")
-                await asyncio.sleep(0.5)  # 재시도 대기 시간 단축
+                logger.error(f"Async read database error: {e}, retrying...")
+                await asyncio.sleep(0.5)
                 retry_count += 1
     if retry_count > 3:
-        logger.error("Maximum retry attempts reached, failing.")
+        logger.error("Maximum retry attempts reached for read operation, failing.")
 
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def get_db():
+def get_read_db():
+    """동기 읽기 전용 DB 연결 - Primary/Replica 로드밸런싱"""
     retry_count = 0
-    while retry_count <= 3:  # 재시도 횟수 감소
-        db = SessionLocal()
+    while retry_count <= 3:
+        engine = get_sync_read_engine()
+        db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
         try:
             yield db
             break
         except SQLAlchemyError as e:
             db.rollback()
-            logger.error(f"Database error: {e}, retrying...")
-            time.sleep(0.5)  # 재시도 대기 시간 단축
+            logger.error(f"Read database error: {e}, retrying...")
+            time.sleep(0.5)
             retry_count += 1
         finally:
             db.close()
     if retry_count > 3:
-        logger.error("Maximum retry attempts reached, failing.")
+        logger.error("Maximum retry attempts reached for read operation, failing.")
 
+# 동기 세션 설정
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocalReplica = sessionmaker(autocommit=False, autoflush=False, bind=engine_replica)
 
 class AsyncTransactionManager:
     def __init__(self, async_db: AsyncSession):
@@ -163,3 +202,39 @@ def get_sync_redis_client():
         return redis_client
     except redis.ConnectionError as e:
         raise ExceptionResponse(message=f"동기 Redis 연결 간 에러가 발생 했습니다.: {str(e)}", error_code="R0000")
+
+# 기존 get_async_db()는 쓰기 전용으로 사용
+async def get_async_db():
+    """Primary DB 연결용 (쓰기 전용)"""
+    retry_count = 0
+    while retry_count <= 3:
+        async with AsyncSession(bind=async_engine_primary) as db:
+            try:
+                yield db
+                break
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Async write database error: {e}, retrying...")
+                await asyncio.sleep(0.5)
+                retry_count += 1
+    if retry_count > 3:
+        logger.error("Maximum retry attempts reached for write operation, failing.")
+
+# 기존 get_db()는 쓰기 전용으로 사용
+def get_db():
+    """Primary DB 연결용 (쓰기 전용)"""
+    retry_count = 0
+    while retry_count <= 3:
+        db = SessionLocal()
+        try:
+            yield db
+            break
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Write database error: {e}, retrying...")
+            time.sleep(0.5)
+            retry_count += 1
+        finally:
+            db.close()
+    if retry_count > 3:
+        logger.error("Maximum retry attempts reached for write operation, failing.")
