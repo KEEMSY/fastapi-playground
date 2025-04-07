@@ -29,6 +29,7 @@ Instrumentator().instrument(app).expose(app)
 
 origins = [
     "http://localhost:5173",
+    "http://localhost:7777",
 ]
 
 app.add_middleware(

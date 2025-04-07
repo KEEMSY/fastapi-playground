@@ -43,6 +43,17 @@ class StandardRepository:
         """))
         return {row.name: row.value for row in result}
     
+    def get_database_connection_info(self):
+        """데이터베이스 연결 정보 조회"""
+        result = self.db.execute(text("""
+            SELECT 
+                current_database() as database_name,
+                current_user as user,
+                inet_server_addr() as host,
+                inet_server_port() as port
+        """))
+        return result.mappings().first()
+    
     def execute_sleep_query(self, delay):
         """지연 쿼리 실행"""
         self.db.execute(text("SELECT pg_sleep(:delay)"), {"delay": delay})
@@ -52,8 +63,13 @@ class StandardRepository:
         pool_info_data = self.get_connection_pool_info()
         db_stats = self.get_session_stats()
         additional_stats = self.get_additional_stats()
+        db_conn_info = self.get_database_connection_info()
         
         session_info = DatabaseSessionInfo(
+            database_name=db_conn_info["database_name"],
+            user=db_conn_info["user"],
+            host=db_conn_info["host"],
+            port=db_conn_info["port"],
             total_connections=db_stats["total_connections"],
             active_connections=db_stats["active_connections"],
             threads_connected=additional_stats.get("Threads_connected", "0"),

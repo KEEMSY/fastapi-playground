@@ -13,7 +13,7 @@ from src.common.presentation.response import BaseErrorResponse, BaseResponse
 from src.common.presentation.router import create_versioned_router
 from src.domains.standard.presentation.schemas.standard import StandardResponse, StandardDbResponse, DatabaseSessionInfo, PoolInfo, QueryExecutionInfo
 from src.utils import Logging
-from src.database.database import get_db, get_async_db, async_engine_primary
+from src.database.database import get_db, get_async_db, get_async_read_db
 from src.domains.standard.database.standard_repository import StandardRepository
 from src.domains.standard.database.standard_async_repository import StandardAsyncRepository
 
@@ -278,7 +278,7 @@ async def async_test_with_async_db_session(
         le=10,
         description="대기 시간 (초)"
     ),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_read_db)
 ):
     process_id = os.getpid()
     worker_id = multiprocessing.current_process().name
@@ -290,6 +290,10 @@ async def async_test_with_async_db_session(
     # 데이터베이스 정보 조회
     logger.info(f"Checking async connection pool status before query execution")
     session_info, pool_info = await repo.get_database_info()
+    
+    # 데이터베이스 연결 정보 로깅
+    logger.info(f"Database Connection Info - Host: {session_info.host}, Port: {session_info.port}, "
+                f"Database: {session_info.database_name}, User: {session_info.user}")
     
     # 로그 기록
     logger.info(f"Connection Pool Status - Max: {pool_info.max_connections}, "

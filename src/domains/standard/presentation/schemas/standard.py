@@ -22,6 +22,14 @@ class DatabaseSessionInfo(BaseModel):
     threads_connected: str
     threads_running: str
     max_used_connections: str
+    max_connections: int
+    current_connections: int
+    available_connections: int
+    wait_timeout: int
+    database_name: str
+    user: str
+    host: str
+    port: int
 
 class PoolInfo(BaseModel):
     max_connections: int
