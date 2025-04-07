@@ -8,7 +8,7 @@ import random
 
 import aioredis
 import redis
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine, MetaData, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base
@@ -57,7 +57,7 @@ async_engine_primary = create_async_engine(
 )
 
 # Replica Async DB 연결 설정
-ASYNC_SQLALCHEMY_REPLICA_URL = ASYNC_SQLALCHEMY_DATABASE_URL.replace(':5432', ':15433')
+ASYNC_SQLALCHEMY_REPLICA_URL = ASYNC_SQLALCHEMY_DATABASE_URL.replace('db:', 'db_replica:').replace(':5432', ':5432')
 async_engine_replica = create_async_engine(
     ASYNC_SQLALCHEMY_REPLICA_URL,
     pool_size=20,
@@ -91,9 +91,27 @@ engine_replica = create_engine(
     echo=False
 )
 
+# Primary Async 세션 팩토리
+AsyncSessionPrimary = sessionmaker(
+    async_engine_primary,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False
+)
+
+# Replica Async 세션 팩토리
+AsyncSessionReplica = sessionmaker(
+    async_engine_replica,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False
+)
+
 async def get_read_engine():
     """읽기 작업을 위한 엔진 선택 (Primary or Replica)"""
-    engines = [async_engine_primary] + [async_engine_replica]
+    engines = [async_engine_primary, async_engine_replica]
     return random.choice(engines)
 
 def get_sync_read_engine():
@@ -103,20 +121,20 @@ def get_sync_read_engine():
 
 async def get_async_read_db():
     """읽기 전용 DB 연결 - Primary/Replica 로드밸런싱"""
-    retry_count = 0
-    while retry_count <= 3:
-        engine = await get_read_engine()
-        async with AsyncSession(bind=engine) as db:
-            try:
-                yield db
-                break
-            except SQLAlchemyError as e:
-                await db.rollback()
-                logger.error(f"Async read database error: {e}, retrying...")
-                await asyncio.sleep(0.5)
-                retry_count += 1
-    if retry_count > 3:
-        logger.error("Maximum retry attempts reached for read operation, failing.")
+    engine = await get_read_engine()
+    async with AsyncSession(bind=engine) as db:
+        try:
+            # 데이터베이스 연결 정보 조회
+            result = await db.execute(text("SELECT current_database(), current_user, inet_server_addr(), inet_server_port()"))
+            db_info = result.fetchone()
+            logger.info(f"Database Connection Info - Host: {db_info[2]}, Port: {db_info[3]}, "
+                       f"Database: {db_info[0]}, User: {db_info[1]}")
+            
+            yield db
+        except SQLAlchemyError as e:
+            await db.rollback()
+            logger.error(f"Async read database error: {e}")
+            raise
 
 def get_read_db():
     """동기 읽기 전용 DB 연결 - Primary/Replica 로드밸런싱"""
@@ -203,22 +221,21 @@ def get_sync_redis_client():
     except redis.ConnectionError as e:
         raise ExceptionResponse(message=f"동기 Redis 연결 간 에러가 발생 했습니다.: {str(e)}", error_code="R0000")
 
-# 기존 get_async_db()는 쓰기 전용으로 사용
 async def get_async_db():
-    """Primary DB 연결용 (쓰기 전용)"""
-    retry_count = 0
-    while retry_count <= 3:
-        async with AsyncSession(bind=async_engine_primary) as db:
-            try:
-                yield db
-                break
-            except SQLAlchemyError as e:
-                await db.rollback()
-                logger.error(f"Async write database error: {e}, retrying...")
-                await asyncio.sleep(0.5)
-                retry_count += 1
-    if retry_count > 3:
-        logger.error("Maximum retry attempts reached for write operation, failing.")
+    """쓰기 전용 DB 연결 - Primary 사용"""
+    async with AsyncSessionPrimary() as db:
+        try:
+            # 데이터베이스 연결 정보 조회
+            result = await db.execute(text("SELECT current_database(), current_user, inet_server_addr(), inet_server_port()"))
+            db_info = result.fetchone()
+            logger.info(f"Primary Database Connection Info - Host: {db_info[2]}, Port: {db_info[3]}, "
+                       f"Database: {db_info[0]}, User: {db_info[1]}")
+            
+            yield db
+        except SQLAlchemyError as e:
+            await db.rollback()
+            logger.error(f"Primary database error: {e}")
+            raise
 
 # 기존 get_db()는 쓰기 전용으로 사용
 def get_db():
