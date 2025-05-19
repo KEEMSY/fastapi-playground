@@ -3,8 +3,7 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from fastapi.testclient import TestClient
 from src.main import app
-from src.database.database import get_db, get_async_db
-
+from src.database.database import get_db, get_async_db, get_async_read_db
 
 @pytest.fixture
 def client(db_session):
@@ -30,7 +29,8 @@ async def async_client(async_db_session):
             pass
 
     app.dependency_overrides[get_async_db] = override_get_async_db
-    
+    app.dependency_overrides[get_async_read_db] = override_get_async_db
+
     async with AsyncClient(
         transport=ASGITransport(app=app), 
         base_url="http://test"
