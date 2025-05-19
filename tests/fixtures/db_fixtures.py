@@ -10,6 +10,7 @@ from alembic.config import Config
 import os
 from pathlib import Path
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import async_sessionmaker
 import pytest_asyncio
 
@@ -198,3 +199,46 @@ async def async_db_session(test_db_container):
         yield session
 
     await async_engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def cleanup_all_tables_sync(db_session: Session):
+    """동기 세션에서 모든 테이블의 데이터를 정리하는 fixture"""
+    try:
+        # 모든 테이블 목록 조회
+        result = db_session.execute(text("""
+            SELECT tablename 
+            FROM pg_tables 
+            WHERE schemaname = 'public'
+        """))
+        tables = [row[0] for row in result]
+        
+        # 각 테이블의 데이터만 삭제
+        for table in tables:
+            db_session.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
+        
+        db_session.commit()
+    except Exception as e:
+        db_session.rollback()
+        raise e
+
+@pytest_asyncio.fixture(autouse=True)
+async def cleanup_all_tables_async(async_db_session: AsyncSession):
+    """비동기 세션에서 모든 테이블의 데이터를 정리하는 fixture"""
+    try:
+        # 모든 테이블 목록 조회
+        result = await async_db_session.execute(text("""
+            SELECT tablename 
+            FROM pg_tables 
+            WHERE schemaname = 'public'
+        """))
+        tables = [row[0] for row in result]
+        
+        # 각 테이블의 데이터만 삭제
+        for table in tables:
+            await async_db_session.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
+        
+        await async_db_session.commit()
+    except Exception as e:
+        await async_db_session.rollback()
+        raise e
