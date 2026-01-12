@@ -1,0 +1,209 @@
+version: '3.8'
+# 성능 테스트용 다중 인스턴스 (3개) Docker Compose 설정
+# 사용법: docker-compose -f docker-compose-perf-multi.yml up -d
+
+services:
+  nginx:
+    container_name: perf_nginx
+    image: nginx:latest
+    ports:
+      - "7777:80"
+    volumes:
+      - ./nginx/nginx-perf.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app1
+      - app2
+      - app3
+    networks:
+      - perf_multi_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  app1:
+    container_name: perf_app_1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/home/fastAPI-Playground
+    expose:
+      - "8000"
+    environment:
+      ENVIRONMENT: production
+      INSTANCE_ID: "1"
+      SYNC_SQLALCHEMY_DATABASE_URL: postgresql://postgres:test@db:5432/fastapi_playground
+      ASYNC_SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://postgres:test@db:5432/fastapi_playground
+      REDIS_URL: redis://:myStrongPassword@redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: myStrongPassword
+      DATABASE_URL: postgresql://postgres:test@db:5432/fastapi_playground
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: fastapi_playground
+      ENABLE_METRICS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - perf_multi_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  app2:
+    container_name: perf_app_2
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/home/fastAPI-Playground
+    expose:
+      - "8000"
+    environment:
+      ENVIRONMENT: production
+      INSTANCE_ID: "2"
+      SYNC_SQLALCHEMY_DATABASE_URL: postgresql://postgres:test@db:5432/fastapi_playground
+      ASYNC_SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://postgres:test@db:5432/fastapi_playground
+      REDIS_URL: redis://:myStrongPassword@redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: myStrongPassword
+      DATABASE_URL: postgresql://postgres:test@db:5432/fastapi_playground
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: fastapi_playground
+      ENABLE_METRICS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - perf_multi_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  app3:
+    container_name: perf_app_3
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/home/fastAPI-Playground
+    expose:
+      - "8000"
+    environment:
+      ENVIRONMENT: production
+      INSTANCE_ID: "3"
+      SYNC_SQLALCHEMY_DATABASE_URL: postgresql://postgres:test@db:5432/fastapi_playground
+      ASYNC_SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://postgres:test@db:5432/fastapi_playground
+      REDIS_URL: redis://:myStrongPassword@redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: myStrongPassword
+      DATABASE_URL: postgresql://postgres:test@db:5432/fastapi_playground
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: fastapi_playground
+      ENABLE_METRICS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - perf_multi_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  db:
+    container_name: perf_multi_postgres
+    image: postgres:15
+    volumes:
+      - perf_multi_postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: fastapi_playground
+    ports:
+      - "15432:5432"
+    networks:
+      - perf_multi_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fastapi_playground"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=300"
+      - "-c"
+      - "shared_buffers=512MB"
+      - "-c"
+      - "work_mem=32MB"
+      - "-c"
+      - "maintenance_work_mem=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  redis:
+    container_name: perf_multi_redis
+    image: redis:7.2.5-alpine
+    hostname: redis
+    command:
+      - 'redis-server'
+      - '--requirepass myStrongPassword'
+      - '--maxmemory 512mb'
+      - '--maxmemory-policy allkeys-lru'
+    ports:
+      - "16379:6379"
+    networks:
+      - perf_multi_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  perf_multi_network:
+    name: perf_multi_network
+    external: false
+
+volumes:
+  perf_multi_postgres_data:
