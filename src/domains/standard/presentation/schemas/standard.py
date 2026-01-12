@@ -47,3 +47,27 @@ class StandardDbResponse(BaseModel):
     session_info: DatabaseSessionInfo
     pool_info: PoolInfo
     query_executions: Optional[List[QueryExecutionInfo]] = None
+
+
+class PerformanceDataItem(BaseModel):
+    """성능 테스트 데이터 아이템"""
+    id: int
+    title: str
+    content: str
+    category: str
+    status: str
+    view_count: int
+    created_at: str
+    updated_at: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BulkReadResponse(BaseModel):
+    """대용량 조회 응답"""
+    items: List[PerformanceDataItem]
+    total_count: int
+    limit: int
+    offset: int
+    query_time_ms: float
+    message: str

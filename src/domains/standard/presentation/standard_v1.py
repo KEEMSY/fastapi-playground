@@ -4,6 +4,7 @@ import os
 import multiprocessing
 import threading
 import random
+from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -11,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.common.constants import APIVersion
 from src.common.presentation.response import BaseErrorResponse, BaseResponse
 from src.common.presentation.router import create_versioned_router
-from src.domains.standard.presentation.schemas.standard import StandardResponse, StandardDbResponse, DatabaseSessionInfo, PoolInfo, QueryExecutionInfo
+from src.domains.standard.presentation.schemas.standard import StandardResponse, StandardDbResponse, DatabaseSessionInfo, PoolInfo, QueryExecutionInfo, BulkReadResponse
 from src.utils import Logging
 from src.database.database import get_db, get_async_db, get_async_read_db
 from src.domains.standard.database.standard_repository import StandardRepository
@@ -534,4 +535,102 @@ async def async_test_with_sync_db_session_multiple_queries(
             pool_info=pool_info,
             query_executions=query_executions
         ),
-    )    
+    )
+
+
+@router_v1.get(
+    "/sync-bulk-read",
+    response_model=BaseResponse[BulkReadResponse],
+    summary="동기 대용량 데이터 조회 API",
+    description="동기 방식으로 performance_test_data 테이블에서 대용량 데이터를 조회합니다. "
+                "페이지네이션과 카테고리/상태 필터링을 지원합니다."
+)
+def sync_bulk_read(
+    limit: int = Query(default=100, ge=1, le=1000, description="조회할 레코드 수"),
+    offset: int = Query(default=0, ge=0, description="시작 위치"),
+    category: Optional[str] = Query(default=None, description="카테고리 필터"),
+    status: Optional[str] = Query(default=None, description="상태 필터"),
+    db: Session = Depends(get_db)
+):
+    process_id = os.getpid()
+    worker_id = multiprocessing.current_process().name
+    thread_id = threading.current_thread().name
+
+    logger.info(
+        f"Sync bulk read - Process ID: {process_id}, "
+        f"Worker: {worker_id}, Thread: {thread_id}, "
+        f"limit: {limit}, offset: {offset}"
+    )
+
+    repo = StandardRepository(db)
+
+    start_time = time.time()
+    items, total_count = repo.get_performance_data(
+        limit=limit,
+        offset=offset,
+        category=category,
+        status=status
+    )
+    query_time_ms = (time.time() - start_time) * 1000
+
+    logger.info(f"Sync bulk read completed - {len(items)} items in {query_time_ms:.2f}ms")
+
+    return BaseResponse(
+        data=BulkReadResponse(
+            items=items,
+            total_count=total_count,
+            limit=limit,
+            offset=offset,
+            query_time_ms=round(query_time_ms, 2),
+            message=f"Sync read (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})"
+        )
+    )
+
+
+@router_v1.get(
+    "/async-bulk-read",
+    response_model=BaseResponse[BulkReadResponse],
+    summary="비동기 대용량 데이터 조회 API",
+    description="비동기 방식으로 performance_test_data 테이블에서 대용량 데이터를 조회합니다. "
+                "페이지네이션과 카테고리/상태 필터링을 지원합니다."
+)
+async def async_bulk_read(
+    limit: int = Query(default=100, ge=1, le=1000, description="조회할 레코드 수"),
+    offset: int = Query(default=0, ge=0, description="시작 위치"),
+    category: Optional[str] = Query(default=None, description="카테고리 필터"),
+    status: Optional[str] = Query(default=None, description="상태 필터"),
+    db: AsyncSession = Depends(get_async_read_db)
+):
+    process_id = os.getpid()
+    worker_id = multiprocessing.current_process().name
+    thread_id = threading.current_thread().name
+
+    logger.info(
+        f"Async bulk read - Process ID: {process_id}, "
+        f"Worker: {worker_id}, Thread: {thread_id}, "
+        f"limit: {limit}, offset: {offset}"
+    )
+
+    repo = StandardAsyncRepository(db)
+
+    start_time = time.time()
+    items, total_count = await repo.get_performance_data(
+        limit=limit,
+        offset=offset,
+        category=category,
+        status=status
+    )
+    query_time_ms = (time.time() - start_time) * 1000
+
+    logger.info(f"Async bulk read completed - {len(items)} items in {query_time_ms:.2f}ms")
+
+    return BaseResponse(
+        data=BulkReadResponse(
+            items=items,
+            total_count=total_count,
+            limit=limit,
+            offset=offset,
+            query_time_ms=round(query_time_ms, 2),
+            message=f"Async read (PID: {process_id}, Worker: {worker_id}, Thread: {thread_id})"
+        )
+    )
