@@ -1,6 +1,7 @@
+from typing import List, Optional, Tuple
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from src.domains.standard.presentation.schemas.standard import DatabaseSessionInfo, PoolInfo
+from src.domains.standard.presentation.schemas.standard import DatabaseSessionInfo, PoolInfo, PerformanceDataItem
 
 class StandardRepository:
     def __init__(self, db: Session):
@@ -87,5 +88,68 @@ class StandardRepository:
             available_connections=int(pool_info_data['max_connections']) - int(pool_info_data['current_connections']),
             wait_timeout=int(pool_info_data['wait_timeout'])
         )
-        
+
         return session_info, pool_info
+
+    def get_performance_data(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        category: Optional[str] = None,
+        status: Optional[str] = None
+    ) -> Tuple[List[PerformanceDataItem], int]:
+        """
+        성능 테스트 데이터 조회 (동기)
+
+        Args:
+            limit: 조회할 레코드 수
+            offset: 시작 위치
+            category: 카테고리 필터 (선택)
+            status: 상태 필터 (선택)
+
+        Returns:
+            (데이터 리스트, 전체 개수)
+        """
+        # 기본 쿼리
+        base_query = "FROM performance_test_data WHERE 1=1"
+        params = {"limit": limit, "offset": offset}
+
+        if category:
+            base_query += " AND category = :category"
+            params["category"] = category
+        if status:
+            base_query += " AND status = :status"
+            params["status"] = status
+
+        # 전체 개수 조회
+        count_result = self.db.execute(
+            text(f"SELECT COUNT(*) {base_query}"),
+            params
+        )
+        total_count = count_result.scalar()
+
+        # 데이터 조회
+        data_query = f"""
+            SELECT id, title, content, category, status, view_count,
+                   created_at::text, updated_at::text
+            {base_query}
+            ORDER BY id
+            LIMIT :limit OFFSET :offset
+        """
+        result = self.db.execute(text(data_query), params)
+
+        items = [
+            PerformanceDataItem(
+                id=row.id,
+                title=row.title,
+                content=row.content[:500] + "..." if len(row.content) > 500 else row.content,
+                category=row.category,
+                status=row.status,
+                view_count=row.view_count,
+                created_at=row.created_at,
+                updated_at=row.updated_at
+            )
+            for row in result
+        ]
+
+        return items, total_count
