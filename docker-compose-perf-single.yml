@@ -52,6 +52,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: test
       POSTGRES_DB: fastapi_playground
+      POSTGRES_REPLICATION_MODE: master
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replicapass
     ports:
       - "15432:5432"
     networks:
@@ -73,6 +76,46 @@ services:
       - "maintenance_work_mem=128MB"
       - "-c"
       - "effective_cache_size=512MB"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "max_wal_senders=5"
+      - "-c"
+      - "max_replication_slots=5"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  db_replica:
+    container_name: perf_postgres_replica
+    image: postgres:15
+    volumes:
+      - perf_postgres_replica_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: fastapi_playground
+      POSTGRES_REPLICATION_MODE: slave
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replicapass
+      POSTGRES_MASTER_HOST: db
+      POSTGRES_MASTER_PORT: 5432
+    ports:
+      - "15433:5432"
+    networks:
+      - perf_network
+    depends_on:
+      db:
+        condition: service_healthy
+    command:
+      - "postgres"
+      - "-c"
+      - "hot_standby=on"
     deploy:
       resources:
         limits:
@@ -108,3 +151,4 @@ networks:
 
 volumes:
   perf_postgres_data:
+  perf_postgres_replica_data:
