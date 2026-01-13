@@ -73,6 +73,13 @@ alembic/versions/*
 logs/
 *.log
 
+# ===== 성능 테스트 결과 =====
+# 테스트 결과 파일 (CSV, HTML, log) 제외, 분석 리포트 (*.md)는 포함
+performance_tests/results/**/*.csv
+performance_tests/results/**/*.html
+performance_tests/results/**/*.log
+performance_tests/results/**/*.txt
+
 # ===== 빌드 및 배포 =====
 # 배포 파일
 dist/
