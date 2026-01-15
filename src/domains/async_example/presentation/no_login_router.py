@@ -1,3 +1,5 @@
+import asyncio
+import threading
 from typing import Optional
 
 from fastapi import APIRouter, Depends
@@ -146,3 +148,21 @@ async def delete_async_example(example_id: int, db: AsyncSession = Depends(get_a
     except Exception as e:
         logger.error(f"UnExpected Error is occurred when deleting AsyncExample: {e}")
         raise PLException(status_code=500, detail=str(e))
+
+
+@router.get("/thread-info", tags=["thread_info"])
+async def get_async_thread_info():
+    """
+    비동기 엔드포인트의 스레드 정보를 반환합니다.
+    비동기 함수는 메인 스레드의 이벤트 루프에서 실행됩니다.
+    """
+    current_thread = threading.current_thread()
+    loop = asyncio.get_running_loop()
+    return {
+        "context": "async (async def)",
+        "thread_name": current_thread.name,
+        "thread_id": current_thread.ident,
+        "is_main_thread": current_thread is threading.main_thread(),
+        "active_thread_count": threading.active_count(),
+        "event_loop_id": id(loop),
+    }

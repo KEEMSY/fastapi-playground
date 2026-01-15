@@ -1,3 +1,5 @@
+import threading
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -79,3 +81,19 @@ def delete_sync_example(example_id: int, db: Session = Depends(get_db)):
         example_service.delete_sync_example(db, example_id)
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/thread-info", tags=["thread_info"])
+def get_sync_thread_info():
+    """
+    동기 엔드포인트의 스레드 정보를 반환합니다.
+    Starlette는 동기 함수를 ThreadPoolExecutor에서 실행합니다.
+    """
+    current_thread = threading.current_thread()
+    return {
+        "context": "sync (def)",
+        "thread_name": current_thread.name,
+        "thread_id": current_thread.ident,
+        "is_main_thread": current_thread is threading.main_thread(),
+        "active_thread_count": threading.active_count(),
+    }
