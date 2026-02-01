@@ -45,12 +45,17 @@ Base = declarative_base(metadata=metadata)
 
 logger = logging.getLogger(__name__)
 
+# SQLAlchemy 연결 풀 설정 (환경 변수에서 로드, 기본값 설정)
+DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", 20))
+DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", 30))
+DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", 10))
+
 # Primary Async DB 연결 설정
 async_engine_primary = create_async_engine(
     ASYNC_SQLALCHEMY_DATABASE_URL,
-    pool_size=20,
-    max_overflow=30,
-    pool_timeout=10,
+    pool_size=DB_POOL_SIZE,
+    max_overflow=DB_MAX_OVERFLOW,
+    pool_timeout=DB_POOL_TIMEOUT,
     pool_recycle=3600,
     pool_pre_ping=True,
     echo=False
@@ -60,9 +65,9 @@ async_engine_primary = create_async_engine(
 ASYNC_SQLALCHEMY_REPLICA_URL = ASYNC_SQLALCHEMY_DATABASE_URL.replace('db:', 'db_replica:').replace(':5432', ':5432')
 async_engine_replica = create_async_engine(
     ASYNC_SQLALCHEMY_REPLICA_URL,
-    pool_size=20,
-    max_overflow=30,
-    pool_timeout=10,
+    pool_size=DB_POOL_SIZE,
+    max_overflow=DB_MAX_OVERFLOW,
+    pool_timeout=DB_POOL_TIMEOUT,
     pool_recycle=3600,
     pool_pre_ping=True,
     echo=False
@@ -71,9 +76,9 @@ async_engine_replica = create_async_engine(
 # Sync Primary 엔진 설정
 engine = create_engine(
     SYNC_SQLALCHEMY_DATABASE_URL,
-    pool_size=20,
-    max_overflow=30,
-    pool_timeout=10,
+    pool_size=DB_POOL_SIZE,
+    max_overflow=DB_MAX_OVERFLOW,
+    pool_timeout=DB_POOL_TIMEOUT,
     pool_recycle=3600,
     pool_pre_ping=True,
     echo=False
@@ -83,9 +88,9 @@ engine = create_engine(
 SYNC_SQLALCHEMY_REPLICA_URL = SYNC_SQLALCHEMY_DATABASE_URL.replace(':5432', ':15433')
 engine_replica = create_engine(
     SYNC_SQLALCHEMY_REPLICA_URL,
-    pool_size=20,
-    max_overflow=30,
-    pool_timeout=10,
+    pool_size=DB_POOL_SIZE,
+    max_overflow=DB_MAX_OVERFLOW,
+    pool_timeout=DB_POOL_TIMEOUT,
     pool_recycle=3600,
     pool_pre_ping=True,
     echo=False
