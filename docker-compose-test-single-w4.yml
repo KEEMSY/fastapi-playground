@@ -29,6 +29,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DB: fastapi_playground
       ENABLE_METRICS: "true"
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
     command: ["bash", "./scripts/start-prod.sh"]
     depends_on:
       db:
