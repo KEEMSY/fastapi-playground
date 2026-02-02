@@ -1,0 +1,65 @@
+version: '3.8'
+services:
+  nginx:
+    container_name: massive_nginx
+    image: nginx:latest
+    ports:
+      - "7777:80"
+    volumes:
+      - ./nginx/nginx-massive.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - massive_network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ENVIRONMENT: production
+      WORKERS: "1" # 각 인스턴스는 1개의 워커만 실행하여 컨텍스트 스위칭 최소화
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      SYNC_SQLALCHEMY_DATABASE_URL: postgresql://postgres:test@db:5432/fastapi_playground
+      ASYNC_SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://postgres:test@db:5432/fastapi_playground
+      REDIS_URL: redis://:myStrongPassword@redis:6379
+      POSTGRES_HOST: db
+      ENABLE_METRICS: "true"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - massive_network
+
+  db:
+    container_name: massive_db
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: fastapi_playground
+    ports:
+      - "15432:5432"
+    command: ["postgres", "-c", "max_connections=500"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fastapi_playground"]
+      interval: 5s
+      retries: 5
+    networks:
+      - massive_network
+
+  redis:
+    container_name: massive_redis
+    image: redis:7.2.5-alpine
+    command: ["redis-server", "--requirepass", "myStrongPassword"]
+    networks:
+      - massive_network
+
+networks:
+  massive_network:
+    driver: bridge
