@@ -8,7 +8,7 @@ from src.domains.answer import service as answer_service
 from src.domains.question import service as question_service
 from src.domains.user.router import get_current_user_with_sync
 from src.domains.user.schemas import User
-from src.common.events import DomainEvent, EventType, event_bus
+from src.domains.notification import service as notification_service
 
 router = APIRouter(
     prefix="/api/answer",
@@ -27,14 +27,16 @@ def answer_create(
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
     answer_service.create_answer(db, question=question, answer_create=_answer_create, user=current_user)
-    event_bus.publish_sync(DomainEvent(
-        event_type=EventType.ANSWER_CREATED,
+
+    # 알림 생성 (백그라운드)
+    notification_service.create_notification_sync(
+        user_id=question.user_id,
         actor_user_id=current_user.id,
-        target_user_id=question.user_id,
-        resource_id=question_id,
+        event_type="answer_created",
         resource_type="question",
+        resource_id=question_id,
         message=f"{current_user.username}님이 회원님의 질문에 답변했습니다.",
-    ))
+    )
 
 
 @router.get("/detail/{answer_id}", response_model=Answer)
@@ -105,11 +107,13 @@ def answer_vote(_answer_vote: AnswerVote,
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="데이터를 찾을수 없습니다.")
     answer_service.vote_answer(db, db_answer=db_answer, db_user=current_user)
-    event_bus.publish_sync(DomainEvent(
-        event_type=EventType.ANSWER_VOTED,
+
+    # 알림 생성 (백그라운드)
+    notification_service.create_notification_sync(
+        user_id=db_answer.user_id,
         actor_user_id=current_user.id,
-        target_user_id=db_answer.user_id,
-        resource_id=db_answer.id,
+        event_type="answer_voted",
         resource_type="answer",
+        resource_id=db_answer.id,
         message=f"{current_user.username}님이 회원님의 답변에 투표했습니다.",
-    ))
+    )
