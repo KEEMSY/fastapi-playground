@@ -12,12 +12,15 @@ from src.domains.answer import router as answer_router
 from src.domains.user import router as user_router
 from src.domains.standard.presentation.standard_v1 import router_v1 as standard_router
 from src.domains.standard.presentation.standard_v2 import router_v2 as standard_router_v2
+from src.domains.notification import router as notification_router
+from src.domains.notification.event_handlers import register_event_handlers
 from src.exceptions import PLException, BLException, DLException
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 시작 시
     print("애플리케이션 시작")
+    register_event_handlers()
     yield
     # 종료 시
     print("애플리케이션 종료")
@@ -49,6 +52,9 @@ app.include_router(user_router.router)
 # 표준 형식 테스트용 API
 app.include_router(standard_router)
 app.include_router(standard_router_v2)
+
+# 알림 시스템
+app.include_router(notification_router.router)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

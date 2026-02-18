@@ -8,6 +8,7 @@ from src.domains.answer.models import Answer
 from src.domains.question.models import Question
 from src.domains.question.schemas import QuestionCreate, QuestionUpdate
 from src.domains.user.models import User
+from src.common.events import DomainEvent, EventType, event_bus
 
 
 # offset: 시작 위치, limit: 가져올 데이터 수
@@ -79,3 +80,11 @@ async def delete_question(db: AsyncSession, question_model: Question):
 async def vote_question(db: AsyncSession, question_model: Question, db_user: User):
     question_model.voter.append(db_user)
     await db.commit()
+    await event_bus.publish(DomainEvent(
+        event_type=EventType.QUESTION_VOTED,
+        actor_user_id=db_user.id,
+        target_user_id=question_model.user_id,
+        resource_id=question_model.id,
+        resource_type="question",
+        message=f"{db_user.username}님이 회원님의 질문에 투표했습니다.",
+    ))

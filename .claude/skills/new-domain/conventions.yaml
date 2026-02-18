@@ -1,0 +1,170 @@
+# FastAPI-Playground 프로젝트 컨벤션
+# new-domain SKILL에서 참조하는 표준 설정
+
+project:
+  name: FastAPI-Playground
+  language: python
+  framework: FastAPI
+  orm: SQLAlchemy
+  async: true
+  database: MySQL
+
+naming:
+  router:
+    function: "{domain}_{action}"  # question_list, question_create
+    prefix: "/api/{domain}"
+    parameter_prefix: "_"  # _question_create
+
+  service:
+    function: "{action}_{domain}"  # get_question, create_question
+
+  model:
+    class: "PascalCase"  # Question
+    table: "lowercase_singular"  # question
+    many_to_many_table: "{domain}_voter"
+
+  schema:
+    response: "{Domain}"  # Question
+    list: "{Domain}List"
+    create: "{Domain}Create"
+    update: "{Domain}Update"
+    delete: "{Domain}Delete"
+    vote: "{Domain}Vote"
+
+standard_fields:
+  model:
+    - name: "id"
+      type: "Integer"
+      primary_key: true
+    - name: "create_date"
+      type: "DateTime"
+      nullable: false
+    - name: "modify_date"
+      type: "DateTime"
+      nullable: true
+    - name: "user_id"
+      type: "Integer"
+      foreign_key: "users.id"
+      nullable: true
+
+  relationships:
+    - name: "user"
+      target: "User"
+      backref: "{domain}_users"
+    - name: "voter"  # optional
+      target: "User"
+      secondary: "{domain}_voter"
+      backref: "{domain}_voters"
+
+imports:
+  router:
+    - "from fastapi import APIRouter, Depends, HTTPException"
+    - "from sqlalchemy.ext.asyncio import AsyncSession"
+    - "from starlette import status"
+    - "from src.database.database import get_async_db"
+    - "from src.domains.user.schemas import User"
+    - "from src.domains.user.router import get_current_user_with_async"
+
+  service:
+    - "from datetime import datetime"
+    - "from sqlalchemy import select, func"
+    - "from sqlalchemy.ext.asyncio import AsyncSession"
+    - "from sqlalchemy.orm import selectinload"
+    - "from src.domains.user.models import User"
+    - "from src.common.events import DomainEvent, EventType, event_bus"
+
+  model:
+    - "from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table"
+    - "from sqlalchemy.orm import relationship"
+    - "from src.database.database import Base"
+
+  schema:
+    - "from __future__ import annotations"
+    - "import datetime"
+    - "from typing import Union"
+    - "from pydantic import BaseModel, field_validator"
+    - "from src.domains.user.schemas import User"
+
+messages:
+  errors:
+    not_found: "{Domain}을 찾을 수 없습니다"
+    data_not_found: "데이터를 찾을 수 없습니다."
+    no_permission_update: "수정 권한이 없습니다."
+    no_permission_delete: "삭제 권한이 없습니다."
+    validation_empty: "필드를 입력해주세요"
+
+patterns:
+  authentication:
+    required_for: ["create", "update", "delete", "vote"]
+    dependency: "get_current_user_with_async"
+
+  permission_check:
+    owner_only: ["update", "delete"]
+    check: "current_user.id != {domain}_model.user_id"
+
+  pagination:
+    default_page: 0
+    default_size: 10
+    parameters:
+      - "page: int = 0"
+      - "size: int = 10"
+    offset_calculation: "page * size"
+
+  search:
+    parameter: "keyword: str = ''"
+    pattern: "ilike"
+    format: "'%%' + keyword + '%%'"
+
+endpoints:
+  list:
+    method: "GET"
+    path: "/list"
+    response_model: "{Domain}List"
+    auth: false
+
+  detail:
+    method: "GET"
+    path: "/detail/{id}"
+    response_model: "{Domain}"
+    auth: false
+
+  create:
+    method: "POST"
+    path: "/create"
+    status_code: "status.HTTP_204_NO_CONTENT"
+    auth: true
+
+  update:
+    method: "PUT"
+    path: "/update"
+    status_code: "status.HTTP_204_NO_CONTENT"
+    auth: true
+    permission_check: true
+
+  delete:
+    method: "DELETE"
+    path: "/delete"
+    status_code: "status.HTTP_204_NO_CONTENT"
+    auth: true
+    permission_check: true
+
+  vote:
+    method: "POST"
+    path: "/vote"
+    status_code: "status.HTTP_204_NO_CONTENT"
+    auth: true
+    emit_event: true
+
+events:
+  enabled: true
+  bus: "event_bus"
+  types:
+    vote: "{DOMAIN}_VOTED"
+  message_format: "{actor.username}님이 회원님의 {resource_type}에 투표했습니다."
+
+database:
+  session_type: "AsyncSession"
+  get_db_function: "get_async_db"
+  commit_pattern: "await db.commit()"
+  relationship_loading: "selectinload"
+  ordering: "{Domain}.create_date.desc()"
