@@ -13,14 +13,18 @@ from src.domains.user import router as user_router
 from src.domains.standard.presentation.standard_v1 import router_v1 as standard_router
 from src.domains.standard.presentation.standard_v2 import router_v2 as standard_router_v2
 from src.domains.notification import router as notification_router
+from src.domains.scheduler import router as scheduler_router
 from src.exceptions import PLException, BLException, DLException
+from src.common.scheduler import start_scheduler, stop_scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 시작 시
     print("애플리케이션 시작")
+    start_scheduler()  # 스케줄러 시작
     yield
     # 종료 시
+    stop_scheduler()  # 스케줄러 종료
     print("애플리케이션 종료")
 
 app = FastAPI(lifespan=lifespan)
@@ -53,6 +57,9 @@ app.include_router(standard_router_v2)
 
 # 알림 시스템
 app.include_router(notification_router.router)
+
+# 스케줄러 관리
+app.include_router(scheduler_router.router)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

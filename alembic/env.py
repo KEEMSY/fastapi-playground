@@ -13,6 +13,7 @@ from src.domains.answer.models import Answer
 from src.domains.sync_example.database.models import SyncExample
 from src.domains.async_example.database.models import AsyncExample, RelatedAsyncExample, DerivedFromAsyncExample
 from src.domains.notification.models import Notification
+from src.domains.scheduler.models import ScheduledJobHistory
 ### 삭제되면 안됨 끝 ###
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -25,11 +26,12 @@ if config.config_file_name is not None:
 
 # sqlalchemy.url 설정은 컨테이너(도커)주소로 관리가 되지 않아 실제 주소를 작성하였음. 24.05.19
 if not config.get_main_option("sqlalchemy.url"):
-    config.set_main_option("sqlalchemy.url", "mysql+pymysql://{username}:{password}@{host}:{port}/{db_name}".format(
-        username="root", 
-        password="test", 
+    # PostgreSQL 사용
+    config.set_main_option("sqlalchemy.url", "postgresql://{username}:{password}@{host}:{port}/{db_name}".format(
+        username="root",
+        password="test",
         host="db",  # localhost 대신 docker-compose 서비스 이름 사용
-        port="3306", # 도커 내부 포트 사용
+        port="5432", # PostgreSQL 도커 내부 포트 사용
         db_name="fastapi_playground"
     ))
 
