@@ -55,6 +55,23 @@ async def get_question(db: AsyncSession, question_id: int):
     return question
 
 
+def get_question_sync(db: Session, question_id: int):
+    """동기 버전의 get_question (sync 라우터용)"""
+    stmt = (
+        select(Question)
+        .where(Question.id == question_id)
+        .options(
+            selectinload(Question.user),
+            selectinload(Question.voter),
+            selectinload(Question.answers).selectinload(Answer.user),
+            selectinload(Question.answers).selectinload(Answer.voter)
+        )
+    )
+    result = db.execute(stmt)
+    question = result.scalars().one_or_none()
+    return question
+
+
 async def create_question(db: AsyncSession, question_create: QuestionCreate, user: User):
     db_question = Question(subject=question_create.subject,
                            content=question_create.content,

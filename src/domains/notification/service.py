@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 from datetime import datetime
@@ -63,42 +65,50 @@ async def create_notification(
 
 
 def create_notification_sync(
+    db,
     user_id: int,
     actor_user_id: int,
     event_type: str,
     resource_type: str,
     resource_id: int,
     message: str,
-) -> None:
+):
     """동기 컨텍스트(sync 라우터)에서 알림 생성
 
-    백그라운드에서 비동기로 알림을 생성하므로
-    호출 즉시 반환되며 알림 생성은 백그라운드에서 처리됩니다.
-
     Args:
+        db: 동기 DB 세션
         user_id: 알림 받을 사용자 ID
         actor_user_id: 행동한 사용자 ID
         event_type: 이벤트 타입
         resource_type: 리소스 타입
         resource_id: 리소스 ID
         message: 알림 메시지
+
+    Returns:
+        생성된 Notification 객체 (자기 자신에게는 None)
     """
     # 자기 자신에게는 알림 보내지 않음
     if user_id == actor_user_id:
-        return
+        return None
 
     try:
-        # 메인 이벤트 루프에 태스크 예약
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            asyncio.create_task(_create_notification_background(
-                user_id, actor_user_id, event_type,
-                resource_type, resource_id, message
-            ))
-        else:
-            logger.warning("No running event loop; notification dropped")
-    except RuntimeError:
-        logger.warning("Failed to schedule notification task")
+        notification = Notification(
+            user_id=user_id,
+            actor_user_id=actor_user_id,
+            event_type=event_type,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            message=message,
+            created_at=datetime.utcnow(),
+        )
+        db.add(notification)
+        db.commit()
+        db.refresh(notification)
+        return notification
+    except Exception as e:
+        logger.error(f"Failed to create notification: {e}")
+        db.rollback()
+        return None
 
 
 async def _create_notification_background(

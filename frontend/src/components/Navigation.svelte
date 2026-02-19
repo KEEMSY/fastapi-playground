@@ -7,6 +7,29 @@
         username,
         is_login,
     } from "../lib/store";
+    import NotificationBell from "./NotificationBell.svelte";
+    import {
+        startNotificationPolling,
+        stopNotificationPolling,
+    } from "../lib/notification";
+    import { onMount, onDestroy } from "svelte";
+
+    // 로그인 상태 변경 시 폴링 제어
+    $: if ($is_login) {
+        startNotificationPolling();
+    } else {
+        stopNotificationPolling();
+    }
+
+    onMount(() => {
+        if ($is_login) {
+            startNotificationPolling();
+        }
+    });
+
+    onDestroy(() => {
+        stopNotificationPolling();
+    });
 </script>
 
 <!-- 네비게이션바 -->
@@ -38,6 +61,9 @@
                         <a use:link class="nav-link" href="/question-create"
                             >질문 등록</a
                         >
+                    </li>
+                    <li class="nav-item">
+                        <NotificationBell />
                     </li>
                     <li class="nav-item">
                         <a use:link class="nav-link" href="/">{$username}</a>

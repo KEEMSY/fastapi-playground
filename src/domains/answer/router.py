@@ -23,13 +23,14 @@ def answer_create(
         current_user=Depends(get_current_user_with_sync)
 ):
     # create answer
-    question = question_service.get_question(db, question_id=question_id)
+    question = question_service.get_question_sync(db, question_id=question_id)
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
     answer_service.create_answer(db, question=question, answer_create=_answer_create, user=current_user)
 
-    # 알림 생성 (백그라운드)
+    # 알림 생성
     notification_service.create_notification_sync(
+        db=db,
         user_id=question.user_id,
         actor_user_id=current_user.id,
         event_type="answer_created",

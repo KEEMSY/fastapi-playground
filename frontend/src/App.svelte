@@ -11,6 +11,7 @@
   import PerformanceTest from "./routes/PerformanceTest.svelte";
   import DbSessionTest from "./routes/DbSessionTest.svelte";
   import ProductionTest from "./routes/ProductionTest.svelte";
+  import Notifications from "./routes/Notifications.svelte";
 
   const routes = {
     "/": Home,
@@ -23,6 +24,7 @@
     "/performance-test": PerformanceTest,
     "/db-session-test": DbSessionTest,
     "/production-test": ProductionTest,
+    "/notifications": Notifications,
   };
 </script>
 
