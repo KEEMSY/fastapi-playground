@@ -10,18 +10,10 @@ from typing import List, Optional
 from datetime import datetime
 
 from src.common.scheduler import get_scheduled_jobs, run_job_now, scheduler
-from src.database.database import SessionLocal
+from src.database.database import get_read_db
 from src.domains.scheduler.service import get_job_histories
 from sqlalchemy.orm import Session
 
-
-def get_db():
-    """동기 DB 세션 의존성"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 router = APIRouter(prefix="/api/scheduler", tags=["scheduler"])
 
@@ -117,7 +109,7 @@ async def list_job_histories(
     status: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """스케줄 작업 실행 이력 조회
 
