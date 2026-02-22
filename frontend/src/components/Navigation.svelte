@@ -9,25 +9,28 @@
     } from "../lib/store";
     import NotificationBell from "./NotificationBell.svelte";
     import {
-        startNotificationPolling,
+        startNotificationSSE,
+        stopNotificationSSE,
         stopNotificationPolling,
     } from "../lib/notification";
     import { onMount, onDestroy } from "svelte";
 
-    // 로그인 상태 변경 시 폴링 제어
+    // 로그인 상태 변경 시 SSE 제어
     $: if ($is_login) {
-        startNotificationPolling();
+        startNotificationSSE();
     } else {
+        stopNotificationSSE();
         stopNotificationPolling();
     }
 
     onMount(() => {
         if ($is_login) {
-            startNotificationPolling();
+            startNotificationSSE();
         }
     });
 
     onDestroy(() => {
+        stopNotificationSSE();
         stopNotificationPolling();
     });
 </script>

@@ -3,6 +3,8 @@
     notifications,
     unread_count,
     total_count,
+    connection_status,
+    connection_mode,
     fetchNotifications,
     markAsRead,
     markAllAsRead,
@@ -251,13 +253,49 @@
     </div>
   {/if}
 
-  <!-- 폴링 상태 표시 -->
-  <div class="mt-4 text-center text-muted small">
-    <p>
-      💡 알림은 10초마다 자동으로 확인됩니다.
-      <br />
-      마지막 업데이트: {new Date().toLocaleTimeString()}
-    </p>
+  <!-- 연결 상태 표시 -->
+  <div class="mt-4 text-center">
+    <div class="connection-status">
+      {#if $connection_mode === 'sse'}
+        {#if $connection_status === 'connected'}
+          <span class="badge bg-success">
+            <span class="status-indicator status-online"></span>
+            실시간 연결됨 (SSE)
+          </span>
+          <p class="text-muted small mt-2 mb-0">
+            새 알림이 실시간으로 도착합니다
+          </p>
+        {:else if $connection_status === 'connecting'}
+          <span class="badge bg-warning">
+            <span class="status-indicator status-connecting"></span>
+            연결 중...
+          </span>
+        {:else if $connection_status === 'error'}
+          <span class="badge bg-danger">
+            <span class="status-indicator status-offline"></span>
+            연결 오류
+          </span>
+          <p class="text-muted small mt-2 mb-0">
+            재연결 시도 중...
+          </p>
+        {:else}
+          <span class="badge bg-secondary">
+            <span class="status-indicator status-offline"></span>
+            연결 끊김
+          </span>
+        {/if}
+      {:else if $connection_mode === 'polling'}
+        <span class="badge bg-info">
+          <span class="status-indicator status-polling"></span>
+          폴링 모드 (10초 간격)
+        </span>
+        <p class="text-muted small mt-2 mb-0">
+          10초마다 새 알림을 확인합니다
+        </p>
+      {:else}
+        <span class="badge bg-secondary">연결 없음</span>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -272,5 +310,63 @@
 
   .list-group-item-light {
     background-color: #e7f3ff;
+  }
+
+  .connection-status {
+    display: inline-block;
+  }
+
+  .status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  .status-online {
+    background-color: #28a745;
+    animation: pulse 2s infinite;
+  }
+
+  .status-connecting {
+    background-color: #ffc107;
+    animation: blink 1s infinite;
+  }
+
+  .status-offline {
+    background-color: #dc3545;
+  }
+
+  .status-polling {
+    background-color: #17a2b8;
+    animation: pulse-slow 3s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes blink {
+    0%, 50%, 100% {
+      opacity: 1;
+    }
+    25%, 75% {
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
   }
 </style>

@@ -16,14 +16,17 @@ from src.domains.notification import router as notification_router
 from src.domains.scheduler import router as scheduler_router
 from src.exceptions import PLException, BLException, DLException
 from src.common.scheduler import start_scheduler, stop_scheduler
+from src.domains.notification.notification_poller import notification_poller
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 시작 시
     print("애플리케이션 시작")
     start_scheduler()  # 스케줄러 시작
+    await notification_poller.start()  # 알림 폴링 시작
     yield
     # 종료 시
+    await notification_poller.stop()  # 알림 폴링 중지
     stop_scheduler()  # 스케줄러 종료
     print("애플리케이션 종료")
 

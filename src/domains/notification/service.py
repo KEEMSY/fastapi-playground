@@ -201,3 +201,32 @@ async def mark_all_as_read(db: AsyncSession, user_id: int) -> int:
     result = await db.execute(stmt)
     await db.commit()
     return result.rowcount
+
+
+async def get_new_notifications_since(
+    db: AsyncSession,
+    since: datetime,
+    user_ids: list[int] | None = None
+) -> list[Notification]:
+    """마지막 확인 이후 새 알림 조회 (폴링용)
+
+    Args:
+        db: 비동기 DB 세션
+        since: 마지막 확인 시각
+        user_ids: 조회할 사용자 ID 목록 (연결된 사용자만 조회하여 최적화)
+
+    Returns:
+        새 알림 목록
+    """
+    stmt = (
+        select(Notification)
+        .where(Notification.created_at > since)
+        .options(selectinload(Notification.actor))
+        .order_by(Notification.created_at.asc())
+    )
+
+    if user_ids:
+        stmt = stmt.where(Notification.user_id.in_(user_ids))
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())

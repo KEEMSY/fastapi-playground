@@ -3,6 +3,8 @@
   import {
     unread_count,
     notifications,
+    connection_status,
+    connection_mode,
     markAsRead,
     getNotificationIcon,
   } from "../lib/notification";
@@ -58,21 +60,44 @@
         <span class="visually-hidden">읽지 않은 알림</span>
       </span>
     {/if}
+
+    <!-- 연결 상태 인디케이터 -->
+    {#if $connection_mode === 'sse' && $connection_status === 'connected'}
+      <span class="connection-indicator connection-online" title="실시간 연결됨"></span>
+    {:else if $connection_mode === 'sse' && $connection_status === 'connecting'}
+      <span class="connection-indicator connection-connecting" title="연결 중..."></span>
+    {:else if $connection_mode === 'polling'}
+      <span class="connection-indicator connection-polling" title="폴링 모드"></span>
+    {/if}
   </button>
 
   <!-- 드롭다운 -->
   {#if show_dropdown}
     <div class="notification-dropdown card shadow">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">알림</h6>
-        <a
-          use:link
-          href="/notifications"
-          class="btn btn-sm btn-outline-primary"
-          on:click={closeDropdown}
-        >
-          전체보기
-        </a>
+      <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">알림</h6>
+          <a
+            use:link
+            href="/notifications"
+            class="btn btn-sm btn-outline-primary"
+            on:click={closeDropdown}
+          >
+            전체보기
+          </a>
+        </div>
+        <!-- 연결 상태 -->
+        <div class="text-muted small">
+          {#if $connection_mode === 'sse' && $connection_status === 'connected'}
+            <span class="text-success">● 실시간 연결됨</span>
+          {:else if $connection_mode === 'sse' && $connection_status === 'connecting'}
+            <span class="text-warning">● 연결 중...</span>
+          {:else if $connection_mode === 'polling'}
+            <span class="text-info">● 폴링 모드 (10초)</span>
+          {:else}
+            <span class="text-secondary">● 연결 없음</span>
+          {/if}
+        </div>
       </div>
       <div class="card-body p-0">
         {#if recent_notifications.length === 0}
@@ -141,6 +166,51 @@
 
   .notification-item:hover {
     background-color: #f8f9fa !important;
+  }
+
+  /* 연결 상태 인디케이터 */
+  .connection-indicator {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid white;
+  }
+
+  .connection-online {
+    background-color: #28a745;
+    animation: pulse-indicator 2s infinite;
+  }
+
+  .connection-connecting {
+    background-color: #ffc107;
+    animation: blink-indicator 1s infinite;
+  }
+
+  .connection-polling {
+    background-color: #17a2b8;
+  }
+
+  @keyframes pulse-indicator {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.1);
+    }
+  }
+
+  @keyframes blink-indicator {
+    0%, 50%, 100% {
+      opacity: 1;
+    }
+    25%, 75% {
+      opacity: 0.3;
+    }
   }
 
   @media (max-width: 576px) {
