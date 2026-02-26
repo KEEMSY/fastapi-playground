@@ -14,6 +14,7 @@ from src.domains.standard.presentation.standard_v1 import router_v1 as standard_
 from src.domains.standard.presentation.standard_v2 import router_v2 as standard_router_v2
 from src.domains.notification import router as notification_router
 from src.domains.scheduler import router as scheduler_router
+from src.domains.redis.router import router as redis_router
 from src.exceptions import PLException, BLException, DLException
 from src.common.scheduler import start_scheduler, stop_scheduler
 from src.domains.notification.notification_poller import notification_poller
@@ -63,6 +64,9 @@ app.include_router(notification_router.router)
 
 # 스케줄러 관리
 app.include_router(scheduler_router.router)
+
+# Redis 학습 커리큘럼
+app.include_router(redis_router)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
