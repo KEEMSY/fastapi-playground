@@ -111,6 +111,11 @@
                         href="/production-test"
                         class="btn btn-outline-primary">프로덕션 환경 테스트</a
                     >
+                    <a
+                        use:link
+                        href="/concurrency-experiment"
+                        class="btn btn-outline-success ms-1">동시성 실험</a
+                    >
                 </li>
             </ul>
         </div>

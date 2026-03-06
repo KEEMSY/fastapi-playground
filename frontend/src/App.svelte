@@ -12,6 +12,7 @@
   import DbSessionTest from "./routes/DbSessionTest.svelte";
   import ProductionTest from "./routes/ProductionTest.svelte";
   import Notifications from "./routes/Notifications.svelte";
+  import ConcurrencyExperiment from "./routes/ConcurrencyExperiment.svelte";
 
   const routes = {
     "/": Home,
@@ -25,6 +26,7 @@
     "/db-session-test": DbSessionTest,
     "/production-test": ProductionTest,
     "/notifications": Notifications,
+    "/concurrency-experiment": ConcurrencyExperiment,
   };
 </script>
 
