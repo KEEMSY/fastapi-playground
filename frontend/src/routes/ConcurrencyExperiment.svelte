@@ -479,9 +479,10 @@
                         <div class="col-sm-6">
                             <div class="p-2 rounded" style="background:#f3e5f5; font-size:13px">
                                 <strong style="color:#6a1b9a">multi_instance (Scale-out)</strong><br>
-                                Nginx + Gunicorn + uvicorn worker 구조.
-                                각 인스턴스가 독립 프로세스로 CPU-bound도 병렬화.
-                                실제 운영 환경 스케일-아웃 패턴.
+                                Nginx + Gunicorn + uvicorn worker 구조 시뮬레이션.
+                                각 인스턴스 = 독립 프로세스 + 독립 asyncio 이벤트 루프.
+                                인스턴스 내 태스크는 asyncio로 동시 처리.
+                                <em>spawn 기동 비용 포함 — 실제 운영은 워커 미리 기동.</em>
                             </div>
                         </div>
                     </div>

@@ -8,7 +8,9 @@
 
 import asyncio
 import math
+import multiprocessing
 import os
+import queue
 import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -61,21 +63,9 @@ def _io_bound_task(task_id: int, sleep_seconds: float) -> dict:
     }
 
 
-def _multi_instance_batch(instance_id: int, task_ids: list, task_type: str, param: float) -> list:
-    """멀티 인스턴스 배치 실행
-
-    각 인스턴스(프로세스)가 할당된 태스크를 순차 처리합니다.
-    CPU-bound 작업에서 GIL 제약 없이 진정한 병렬 실행을 보여줍니다.
-    """
-    results = []
-    for task_id in task_ids:
-        if task_type == "io":
-            r = _io_bound_task(task_id, param)
-        else:
-            r = _cpu_bound_task(task_id, int(param))
-        r["instance_id"] = instance_id
-        results.append(r)
-    return results
+# worker 모듈의 instance_event_loop를 re-export
+# spawn 자식 프로세스는 이 모듈 대신 worker.py만 임포트하므로 기동이 빠릅니다.
+from src.domains.concurrency.worker import instance_event_loop as _instance_event_loop
 
 
 # ── 실험 상태 ────────────────────────────────────────────────────────────────
@@ -280,76 +270,94 @@ async def _run_multiprocessing(state: ExperimentState) -> List[TaskResult]:
 
 
 async def _run_multi_instance(state: ExperimentState) -> List[TaskResult]:
-    """멀티 인스턴스 동시성
+    """멀티 인스턴스 동시성 (실제 uvicorn worker 구조 시뮬레이션)
 
-    여러 독립 서버 인스턴스(프로세스)가 태스크를 분담합니다.
-    각 인스턴스는 자신이 받은 태스크를 순차 처리합니다.
-    - CPU 작업: 인스턴스마다 별도 프로세스 → GIL 없이 진짜 병렬
-    - 실제 운영: Nginx + Gunicorn + uvicorn worker 구조와 동일
+    구조:
+      1. 로드밸런서(round-robin)가 태스크를 N개 인스턴스에 분배
+      2. 각 인스턴스(프로세스)가 독립 asyncio.run()으로 자신의 태스크를 동시 처리
+      3. 결과를 multiprocessing.Queue로 메인 프로세스에 실시간 전달
+      4. 메인 프로세스는 큐를 polling하며 SSE progress_queue에 중계
+
+    실제 Nginx + Gunicorn + uvicorn worker 동작과 동일한 패턴입니다.
     """
     req = state.request
-    executor = ProcessPoolExecutor(max_workers=req.worker_count)
-    loop = asyncio.get_running_loop()
 
-    # 태스크를 인스턴스에 round-robin 분배
+    # 로드밸런서 역할: 태스크를 round-robin으로 인스턴스에 분배
     batches: List[List[int]] = [[] for _ in range(req.worker_count)]
     for i in range(req.task_count):
         batches[i % req.worker_count].append(i)
 
     param = req.complexity * 0.2 if req.task_type == TaskType.io else float(req.complexity)
 
-    # 각 인스턴스 배치를 프로세스에서 실행
-    instance_futures = [
-        loop.run_in_executor(
-            executor,
-            _multi_instance_batch,
-            instance_id,
-            batch_task_ids,
-            req.task_type.value,
-            param,
+    # spawn context: fork 시 uvicorn 스레드의 mutex를 상속하면 교착 발생
+    # spawn은 새 Python 인터프리터를 시작 → asyncio 상태 상속 없음
+    ctx = multiprocessing.get_context("spawn")
+    result_queue = ctx.Queue()
+
+    # 각 인스턴스를 독립 프로세스로 시작
+    processes = []
+    active_instances = 0
+    for instance_id, task_ids in enumerate(batches):
+        if not task_ids:
+            continue
+        p = ctx.Process(
+            target=_instance_event_loop,
+            args=(instance_id, task_ids, req.task_type.value, param,
+                  result_queue, state.start_wall_time),
         )
-        for instance_id, batch_task_ids in enumerate(batches)
-        if batch_task_ids
-    ]
+        p.start()
+        processes.append(p)
+        active_instances += 1
 
-    batch_results = await asyncio.gather(*instance_futures)
-    executor.shutdown(wait=False)
+    # 결과 수집: non-blocking poll → asyncio.sleep으로 이벤트 루프 양보
+    task_results: dict = {}
+    instances_done = 0
 
-    # 인스턴스 결과를 TaskResult로 변환 (각 배치는 순차 실행이므로 시간 재계산)
-    task_results: List[TaskResult] = []
-    for instance_id, (batch, raw_list) in enumerate(zip(batches, batch_results)):
-        cumulative = 0.0
-        for raw in raw_list:
-            start = cumulative
-            end = start + raw["elapsed"]
-            cumulative = end
+    while instances_done < active_instances:
+        try:
+            msg = result_queue.get_nowait()
+        except queue.Empty:
+            await asyncio.sleep(0.03)
+            # 모든 프로세스가 예기치 않게 종료된 경우 탈출
+            if all(not p.is_alive() for p in processes):
+                break
+            continue
+
+        if msg["type"] == "task_start":
+            await state.progress_queue.put({
+                "type": "task_start",
+                "task_id": msg["task_id"],
+                "worker_id": msg["instance_id"],
+                "start_time": msg["start_time"],
+            })
+
+        elif msg["type"] == "task_done":
             tr = TaskResult(
-                task_id=raw["task_id"],
-                worker_id=instance_id,
-                start_time=round(start, 4),
-                end_time=round(end, 4),
-                elapsed=raw["elapsed"],
+                task_id=msg["task_id"],
+                worker_id=msg["instance_id"],
+                start_time=msg["start_time"],
+                end_time=msg["end_time"],
+                elapsed=msg["elapsed"],
             )
-            task_results.append(tr)
+            task_results[msg["task_id"]] = tr
+            await state.progress_queue.put({
+                "type": "task_complete",
+                "task_id": msg["task_id"],
+                "worker_id": msg["instance_id"],
+                "start_time": msg["start_time"],
+                "end_time": msg["end_time"],
+                "elapsed": msg["elapsed"],
+            })
 
-    # progress 이벤트 일괄 전송
-    for tr in sorted(task_results, key=lambda x: x.start_time):
-        await state.progress_queue.put({
-            "type": "task_start",
-            "task_id": tr.task_id,
-            "worker_id": tr.worker_id,
-            "start_time": tr.start_time,
-        })
-        await state.progress_queue.put({
-            "type": "task_complete",
-            "task_id": tr.task_id,
-            "worker_id": tr.worker_id,
-            "start_time": tr.start_time,
-            "end_time": tr.end_time,
-            "elapsed": tr.elapsed,
-        })
+        elif msg["type"] == "instance_done":
+            instances_done += 1
 
-    return task_results
+    for p in processes:
+        p.join(timeout=5)
+        if p.is_alive():
+            p.terminate()
+
+    return list(task_results.values())
 
 
 # ── 메인 진입점 ──────────────────────────────────────────────────────────────
