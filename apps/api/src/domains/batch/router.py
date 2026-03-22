@@ -10,6 +10,7 @@ API 엔드포인트:
 """
 
 import logging
+from typing import List, Optional
 
 from apscheduler.jobstores.base import JobLookupError
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
@@ -110,10 +111,10 @@ async def batch_scheduler_remove(scheduler_job_id: str):
     logger.info(f"스케줄러 배치 제거: {scheduler_job_id}")
 
 
-@router.get("/jobs", response_model=list[BatchJobSummary])
+@router.get("/jobs", response_model=List[BatchJobSummary])
 async def batch_list(
-    method: BatchMethod | None = None,
-    status_filter: BatchStatus | None = None,
+    method: Optional[BatchMethod] = None,
+    status_filter: Optional[BatchStatus] = None,
 ):
     """배치 작업 목록 조회 (최신순, 필터 지원)
 
