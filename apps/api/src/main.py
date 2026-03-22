@@ -20,17 +20,28 @@ from src.domains.batch.router import router as batch_router
 from src.exceptions import PLException, BLException, DLException
 from src.common.scheduler import start_scheduler, stop_scheduler
 from src.domains.notification.notification_poller import notification_poller
+from src.domains.scheduler.scheduler_engine import scheduler_engine
+from src.domains.scheduler.service import get_active_schedules
+from src.database.database import AsyncSessionPrimary
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 시작 시
     print("애플리케이션 시작")
-    start_scheduler()  # 스케줄러 시작
+    start_scheduler()  # 기존 스케줄러 시작
     await notification_poller.start()  # 알림 폴링 시작
+
+    # SchedulerEngine 시작 + DB 스케줄 복원
+    await scheduler_engine.start()
+    async with AsyncSessionPrimary() as db:
+        active_schedules = await get_active_schedules(db)
+        await scheduler_engine.sync_from_db(active_schedules)
+
     yield
     # 종료 시
     await notification_poller.stop()  # 알림 폴링 중지
-    stop_scheduler()  # 스케줄러 종료
+    await scheduler_engine.stop()  # SchedulerEngine 종료
+    stop_scheduler()  # 기존 스케줄러 종료
     print("애플리케이션 종료")
 
 app = FastAPI(lifespan=lifespan)

@@ -13,7 +13,7 @@ from src.domains.answer.models import Answer
 from src.domains.sync_example.database.models import SyncExample
 from src.domains.async_example.database.models import AsyncExample, RelatedAsyncExample, DerivedFromAsyncExample
 from src.domains.notification.models import Notification
-from src.domains.scheduler.models import ScheduledJobHistory
+from src.domains.scheduler.models import Schedule, ScheduledJobHistory
 ### 삭제되면 안됨 끝 ###
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
