@@ -37,12 +37,21 @@
 - [ ] 스키마를 어디서 관리하고 버전을 어떻게 붙이는가
 
 ### 실습
-- [ ] 루트 `docker-compose.yml`에 `rabbitmq:3-management` 추가
-- [ ] Celery 워커 서비스 추가, 간단한 task 실행
+- [x] 격리된 `apps/order-flow/compose.yaml`에 RabbitMQ와 Celery worker를 별도 서비스로 구성
+- [x] API 이벤트 흐름과 Celery receipt task 흐름을 연결하고 각각 실행 확인
 - [ ] 같은 기능(예: 답변 등록 후 후처리)을 Celery task 방식과 이벤트 발행 방식으로 각각 구현
-- [ ] topic exchange 하나에 consumer 두 개를 붙여 fan-out 확인
-- [ ] Avro 스키마로 이벤트를 직렬화하고, 필드를 추가한 v2 스키마로 v1 메시지 읽어보기
-- [ ] consumer에서 예외를 내 DLQ로 가는지 확인
+- [x] topic exchange 하나에 consumer 두 개를 붙여 fan-out 확인
+- [x] Avro로 이벤트를 직렬화하고 필드를 추가한 v2 reader가 v1 이벤트를 읽는 테스트 추가
+- [ ] `apps/order-flow/schemas/order-created-v2.avsc`의 optional field와 default 값을 직접 확인하고 v1 writer → v2 reader 결과 설명하기
+- [ ] consumer에서 예외를 발생시키고 재전달 동작 확인; 현재 Compose에는 DLQ가 없으므로 DLQ 설계는 별도 확장 과제
+
+### Order Flow Lab 진행
+
+- [ ] [`apps/order-flow/README.md`](../apps/order-flow/README.md)의 Compose 스택 실행
+- [ ] RabbitMQ 관리 화면에서 `orders.events` exchange와 `orders.audit`, `orders.receipts` 큐 확인
+- [ ] Celery worker 로그에서 receipt task 실행 확인
+- [ ] consumer의 DB 커밋과 Celery 발행 사이 장애 가능성을 설명하고 task-dispatch Outbox 필요 여부 판단
+- [ ] 이벤트는 사실을 전달하고 Celery task는 실행할 명령을 전달한다는 차이를 자신의 예시로 설명
 
 ## 설명할 수 있어야 할 질문
 1. "회원가입 후 환영 메일 발송"은 task인가, 이벤트인가? 둘 다라면 어떻게 나누는가?

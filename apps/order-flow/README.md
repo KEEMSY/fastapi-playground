@@ -1,0 +1,131 @@
+# Order Flow Lab
+
+Order Flow is an isolated learning app for async FastAPI and SQLAlchemy, transactional Outbox publishing, Avro, RabbitMQ consumers, Celery tasks, and idempotency. It has its own Compose stack, ports, and MySQL volume; it does not reuse the root app stack.
+
+## Start and stop
+
+From the repository root:
+
+```sh
+docker compose -f apps/order-flow/compose.yaml up --build -d
+```
+
+Or run `docker compose up --build -d` from this directory. Open the API docs at <http://localhost:17777/docs> and RabbitMQ management at <http://localhost:15673>. RabbitMQ login is `order_flow` / `order_flow`. MySQL is available on `localhost:13307` with database, user, and password `order_flow`.
+
+Stop the containers while keeping database and broker data:
+
+```sh
+docker compose -f apps/order-flow/compose.yaml down
+```
+
+Reset the lab data as well:
+
+```sh
+docker compose -f apps/order-flow/compose.yaml down -v
+```
+
+## Order processing flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as FastAPI
+    participant DB as MySQL
+    participant Relay as Outbox relay
+    participant MQ as RabbitMQ
+    participant C as Event consumers
+    participant W as Celery worker
+
+    Client->>API: POST /orders + Idempotency-Key
+    API->>DB: Order + key response + Outbox in one transaction
+    API-->>Client: 201 Created
+    Relay->>DB: Lock pending Outbox row
+    Relay->>MQ: Publish persistent Avro event, await confirm
+    Relay->>DB: Mark event published
+    MQ->>C: Fan out to orders.audit and orders.receipts
+    C->>DB: Record (consumer_name, message_id)
+    C->>W: Submit receipt task from orders.receipts
+    W->>DB: Insert one order_receipts row
+```
+
+The event queues represent separate subscribers to the same fact. Only `orders.receipts` submits a command to Celery. RabbitMQ's `orders.events` exchange handles domain events; Celery uses the `order.tasks` queue for work commands.
+
+## Create an order
+
+In Swagger, expand `POST /orders`, select **Try it out**, set the required `Idempotency-Key` header (for example, `checkout-001`), and enter this JSON body:
+
+```json
+{
+  "sku": "book-1",
+  "quantity": 1
+}
+```
+
+There are no query parameters. `sku` must be 1–100 characters and `quantity` must be an integer from 1 to 10000. The header is separate from the JSON body. Invalid JSON or a missing header returns `422`.
+
+The first request returns `201` with an order ID. Retrying the same logical request with the same key and body returns `200` with the same response; it does not add the quantities together. Reusing that key with a different body returns `409`. Use a different key for each separate order.
+
+The same request can be sent from a terminal:
+
+```sh
+curl -i http://localhost:17777/orders \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: checkout-001' \
+  -d '{"sku":"book-1","quantity":1}'
+```
+
+## Inspect the results
+
+In RabbitMQ management, open **Exchanges** and inspect `orders.events` and its bindings to `orders.audit` and `orders.receipts`. Under **Queues and Streams**, both queues should have a consumer. Message count may already be zero because the consumers acknowledge messages promptly. The Celery worker listens on `order.tasks`; its output is available with:
+
+```sh
+docker compose -f apps/order-flow/compose.yaml logs -f celery-worker
+```
+
+To inspect MySQL from a terminal:
+
+```sh
+docker compose -f apps/order-flow/compose.yaml exec mysql mysql -uorder_flow -porder_flow order_flow
+```
+
+Then run:
+
+```sql
+SHOW TABLES;
+SELECT * FROM orders ORDER BY created_at DESC LIMIT 10;
+SELECT * FROM outbox_events ORDER BY created_at DESC LIMIT 10;
+SELECT * FROM processed_messages ORDER BY processed_at DESC LIMIT 10;
+SELECT * FROM order_receipts ORDER BY sent_at DESC LIMIT 10;
+```
+
+To trace one order, replace the ID with the value returned by the API:
+
+```sql
+SELECT o.id AS order_id, o.sku, o.quantity,
+       e.id AS event_id, e.status AS outbox_status,
+       p.consumer_name, r.sent_at AS receipt_recorded_at
+FROM orders AS o
+JOIN outbox_events AS e ON e.aggregate_id = o.id
+LEFT JOIN processed_messages AS p ON p.message_id = e.id
+LEFT JOIN order_receipts AS r ON r.order_id = o.id
+WHERE o.id = 'YOUR_ORDER_ID';
+```
+
+Expect `outbox_status = published`, one row for each consumer (`orders.audit` and `orders.receipts`), and a non-null receipt timestamp. The two consumer rows describe two independent subscribers processing one event; they do not represent two orders.
+
+## Delivery guarantees to examine
+
+The relay publishes while holding the Outbox row lock. If RabbitMQ confirms a message but the relay exits before MySQL commits the `published` status, it may publish the event again after restart. The consumers deduplicate by `(consumer_name, message_id)`.
+
+The `orders.receipts` consumer commits its Inbox record before it submits the Celery task. A crash between those operations can leave a processed event without a receipt task. This lab leaves that dual-write gap visible as a follow-up exercise: consider a task-dispatch Outbox if the enqueue itself needs a durable guarantee. The receipt task is idempotent by `order_id`, uses late acknowledgment, and retries failures with backoff.
+
+## Tests
+
+From this directory, install test dependencies and run the unit suite:
+
+```sh
+python -m pip install -e '.[test]'
+pytest -q
+```
+
+The tests use in-memory SQLite for transaction and idempotency behavior. Compose provides the MySQL/RabbitMQ end-to-end environment. The API runs `alembic upgrade head` before starting.

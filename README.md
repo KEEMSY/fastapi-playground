@@ -6,6 +6,7 @@ This repository contains independently buildable apps and learning notes.
 apps/
   api/                 # FastAPI backend, tests, migrations, and scripts
   web/                 # Svelte + Vite frontend
+  order-flow/          # Isolated async DB, outbox, RabbitMQ/Avro, Celery lab
 study/                 # Learning plans and notes only
 packages/              # Reserved for code genuinely shared by multiple apps
 docker-compose.yml     # Local stack for web, API, MySQL, and Redis
@@ -48,6 +49,24 @@ npm run dev
 ```
 
 The API test suite is under `apps/api/tests`; run it from `apps/api` with `pytest`. Run the web app's Vite commands from `apps/web`.
+
+## Order flow study project
+
+The integrated learning project has a separate Compose stack and does not reuse the existing app's database or ports:
+
+```sh
+cd apps/order-flow
+docker compose up --build
+```
+
+- Order API: <http://localhost:17777/docs>
+- RabbitMQ management: <http://localhost:15673> (`order_flow` / `order_flow`)
+- MySQL: `localhost:13307`
+- RabbitMQ AMQP: `localhost:5673`
+
+The stack runs API, Outbox relay, two event queues, and a Celery worker as separate containers. See [the order-flow guide](apps/order-flow/README.md) for request examples, test commands, and cleanup.
+
+The API response confirms the order transaction. The guide also shows how to verify the later Outbox, consumer, and receipt-task results in RabbitMQ management and MySQL.
 
 ## Study project
 

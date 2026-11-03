@@ -34,6 +34,19 @@
   - [ ] consumer 처리 중 예외 발생 시 롤백 및 재처리되는지
 - [ ] `Idempotency-Key` 기반 POST API 구현
 
+### Order Flow Lab 진행
+
+- [ ] 같은 `Idempotency-Key`와 같은 본문으로 재요청해 동일 응답 확인
+- [ ] 같은 키에 다른 본문을 보내 `409` 확인
+- [ ] 주문 row와 Outbox row가 함께 저장되는지 확인
+- [ ] Outbox relay 재시작 후 중복 발행 가능성과 consumer의 `processed_messages` 중복 방지 확인
+- [ ] 같은 consumer queue에서 동일 이벤트를 재전달해도 Inbox 기록이 한 건인지 확인
+- [ ] 서로 다른 consumer 두 개가 같은 `message_id`를 각각 기록하는 이유 설명
+- [ ] Celery task를 같은 주문 ID로 여러 번 실행해도 `order_receipts` row가 한 건인지 확인
+- [ ] Inbox 기록 이후 Celery 발행 전에 장애가 나면 작업이 누락될 수 있는 dual-write 구간을 설명
+
+요청 키 재사용은 수량 누적을 뜻하지 않는다. 같은 키와 같은 요청은 같은 주문 응답을 재생하며, 별도 주문은 별도 키가 필요하다. 한 주문의 수량 변경은 별도의 API 동작으로 구현해야 한다.
+
 ## 실패 시나리오 표 (직접 채우기)
 
 | 시점 | 장애 | 결과 | 대응 |
