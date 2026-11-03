@@ -67,6 +67,21 @@ services:
     environment:
       DATABASE_URL: mysql+asyncmy://order_flow:order_flow@mysql:3306/order_flow
       AMQP_URL: amqp://order_flow:order_flow@rabbitmq:5672/
+      CELERY_BROKER_URL: amqp://order_flow:order_flow@rabbitmq:5672//
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  celery-worker:
+    build: .
+    command: ["celery", "-A", "order_flow.celery_app:celery_app", "worker", "--loglevel=INFO", "--concurrency=1"]
+    environment:
+      DATABASE_URL: mysql+asyncmy://order_flow:order_flow@mysql:3306/order_flow
+      CELERY_BROKER_URL: amqp://order_flow:order_flow@rabbitmq:5672//
     depends_on:
       mysql:
         condition: service_healthy
