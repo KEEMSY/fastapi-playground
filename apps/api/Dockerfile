@@ -1,7 +1,7 @@
 FROM python:3.9-slim-bookworm
 
 RUN apt-get update && \
-    apt-get install -y gcc libpq-dev && apt-get install -y procps && \
+    apt-get install -y gcc libpq-dev procps && \
     apt clean && \
     rm -rf /var/cache/apt/*
 
@@ -32,4 +32,3 @@ USER app
 WORKDIR /home/fastAPI-Playground
 
 CMD ["bash", "./scripts/start-dev.sh"]
-# CMD ["bash", "./scripts/start-prod.sh"]
