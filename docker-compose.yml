@@ -1,0 +1,66 @@
+services:
+  api:
+    container_name: dev_app
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    volumes:
+      - ./apps/api:/home/fastAPI-Playground
+    env_file:
+      - .env
+    ports:
+      - "7777:8000"
+    depends_on:
+      - db
+    restart: on-failure
+    networks:
+      - fastapi_network
+
+  web:
+    container_name: dev_web
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_SERVER_URL: ${VITE_SERVER_URL:-http://localhost:7777}
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    networks:
+      - fastapi_network
+
+  db:
+    container_name: dev_mysql
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: test
+      MYSQL_DATABASE: fastapi_playground
+      MYSQL_USER: fastapi_user
+      MYSQL_PASSWORD: test
+    ports:
+      - "13306:3306"
+    networks:
+      - fastapi_network
+
+  redis:
+    container_name: dev_redis
+    image: redis:7.2.5-alpine
+    hostname: redis
+    command:
+      - redis-server
+      - --requirepass
+      - myStrongPassword
+    ports:
+      - "16379:6379"
+    networks:
+      - fastapi_network
+
+networks:
+  fastapi_network:
+
+volumes:
+  mysql_data:
