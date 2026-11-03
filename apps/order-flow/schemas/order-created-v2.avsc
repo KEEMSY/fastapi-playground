@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "OrderCreated",
+  "namespace": "com.example.orderflow.v1",
+  "fields": [
+    {"name": "message_id", "type": "string"},
+    {"name": "order_id", "type": "string"},
+    {"name": "sku", "type": "string"},
+    {"name": "quantity", "type": "int"},
+    {"name": "customer_note", "type": ["null", "string"], "default": null}
+  ]
+}

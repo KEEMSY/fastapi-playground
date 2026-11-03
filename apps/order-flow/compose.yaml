@@ -1,0 +1,65 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: orderflow
+      MYSQL_DATABASE: order_flow
+      MYSQL_USER: order_flow
+      MYSQL_PASSWORD: order_flow
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    ports:
+      - "13307:3306"
+    volumes:
+      - order_flow_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uorder_flow", "-porder_flow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: order_flow
+      RABBITMQ_DEFAULT_PASS: order_flow
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: .
+    command: ["sh", "-c", "alembic upgrade head && uvicorn order_flow.api:app --host 0.0.0.0 --port 8000"]
+    environment:
+      DATABASE_URL: mysql+asyncmy://order_flow:order_flow@mysql:3306/order_flow
+    ports:
+      - "17777:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  outbox-relay:
+    build: .
+    command: ["python", "-m", "order_flow.relay"]
+    environment:
+      DATABASE_URL: mysql+asyncmy://order_flow:order_flow@mysql:3306/order_flow
+      AMQP_URL: amqp://order_flow:order_flow@rabbitmq:5672/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  order_flow_mysql:
