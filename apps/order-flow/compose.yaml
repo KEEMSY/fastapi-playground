@@ -61,5 +61,19 @@ services:
       api:
         condition: service_healthy
 
+  consumer:
+    build: .
+    command: ["python", "-m", "order_flow.consumer"]
+    environment:
+      DATABASE_URL: mysql+asyncmy://order_flow:order_flow@mysql:3306/order_flow
+      AMQP_URL: amqp://order_flow:order_flow@rabbitmq:5672/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
 volumes:
   order_flow_mysql:
