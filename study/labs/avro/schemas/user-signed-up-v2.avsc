@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "UserSignedUp",
+  "namespace": "learning.avro.v1",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "user_id", "type": "string"},
+    {"name": "email", "type": "string"},
+    {"name": "display_name", "type": ["null", "string"], "default": null}
+  ]
+}

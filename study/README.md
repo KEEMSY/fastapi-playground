@@ -6,10 +6,14 @@
 
 ## 학습 순서
 
+다음 실습은 빠진 hands-on 항목을 보완하기 위해 **Avro부터** 시작한다. 그 뒤 기존 async/DB 학습을 이어가고, RabbitMQ·Celery·멱등성 실습을 통합한다.
+
 ```
-① async/await  →  ② 비동기 DB 세션  →  ③ 이벤트 vs 작업큐  →  ④ 멱등성 설계
-   (런타임 이해)     (리소스·트랜잭션)       (메시징 구조)          (①~③을 합친 문제)
+⓪ Avro  →  ① async/await  →  ② 비동기 DB 세션  →  ③ 이벤트 vs 작업큐  →  ④ 멱등성 설계
+ (바이너리·스키마) (런타임 이해) (리소스·트랜잭션)     (메시징 구조)          (앞 단계를 합친 문제)
 ```
+
+Avro 실습: [`study/labs/avro/`](./labs/avro/README.md). Order Flow의 Avro 구현과 별도로, 학습자가 직렬화와 Reader/Writer Schema 해석을 직접 완성한다.
 
 ④는 "DB 커밋과 메시지 발행이 따로 실패할 수 있다"는 문제라서 ②와 ③을 먼저 알아야 합니다. 네 주제를 연결하는 실행 프로젝트는 [`apps/order-flow/`](../apps/order-flow/README.md)에 있으며, 기존 API·웹 스택과 별도 Compose로 실행합니다.
 
@@ -17,6 +21,7 @@
 
 | # | 주제 | 예상 기간 | 상태 | 노트 |
 |---|------|----------|------|------|
+| 0 | Apache Avro | 1~2일 | ⬜ 실습 랩 준비됨 · 직접 구현 전 | [Avro Lab](./labs/avro/README.md) |
 | 1 | async/await | 2~3일 | 🟨 실습 환경 준비됨 · 개념 확인 필요 | [01-async-await.md](./01-async-await.md) |
 | 2 | 비동기 DB 세션 관리 | 3~4일 | 🟨 실습 환경 준비됨 · 세션 흐름 확인 필요 | [02-async-db-session.md](./02-async-db-session.md) |
 | 3 | 이벤트 vs 작업큐 | 3~4일 | 🟨 이벤트와 Celery 경로 실행 가능 · 학습 중 | [03-event-vs-task-queue.md](./03-event-vs-task-queue.md) |
