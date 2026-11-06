@@ -20,10 +20,12 @@ INCOMPATIBLE_READER = load_schema("user-signed-up-incompatible.avsc")
 
 
 def encode_v1(event: dict) -> bytes:
-    """Encode an event using the v1 schema. TODO: implement with fastavro."""
-    raise NotImplementedError("Implement Avro binary encoding")
+    """Encode an event using the v1 schema."""
+    output = BytesIO()
+    schemaless_writer(output, WRITER_V1, event)
+    return output.getvalue()
 
 
 def decode(payload: bytes, reader_schema: dict = WRITER_V1) -> dict:
     """Decode bytes with the v1 writer schema and the requested reader schema."""
-    raise NotImplementedError("Implement writer/reader schema resolution")
+    return schemaless_reader(BytesIO(payload), WRITER_V1, reader_schema)

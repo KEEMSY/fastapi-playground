@@ -1,6 +1,20 @@
 # Avro 실습: 직렬화와 스키마 진화
 
-이 랩은 `fastavro`로 Avro binary payload를 만들고, Writer Schema와 Reader Schema가 달라질 때 필드가 어떻게 해석되는지 직접 구현하고 확인하는 실습입니다. 기존 `apps/order-flow`는 수정하지 않습니다.
+이 랩은 `fastavro`로 Avro binary payload를 만들고, Writer Schema와 Reader Schema가 달라질 때 필드가 어떻게 해석되는지 확인합니다. 기존 `apps/order-flow`는 수정하지 않습니다.
+
+## 이 랩의 스키마 공급 방식
+
+**이 랩은 로컬 `.avsc` 파일을 사용하는 Avro 실습이며, Schema Registry를 사용하지 않습니다.**
+
+| 항목 | 이 랩의 동작 |
+|---|---|
+| 스키마 위치 | `schemas/` 아래의 `.avsc` 파일 |
+| 로드 시점 | `codec.py`가 import될 때 파일을 읽고 `parse_schema()`로 준비 |
+| 인코딩 | `encode_v1()`이 `WRITER_V1`을 직접 사용 |
+| 디코딩 | `decode()`에 Writer Schema와 Reader Schema를 직접 전달 |
+| 레지스트리 / 스키마 ID | 사용하지 않으며 payload에도 ID를 넣지 않음 |
+
+따라서 소비자도 payload를 읽을 Writer Schema를 코드나 다른 설정에서 알고 있어야 합니다. 실제 RabbitMQ 환경에서 Schema Registry를 쓸지는 회사의 레지스트리 제품과 메시지 계약을 확인한 뒤 별도로 구현해야 합니다.
 
 ## 환경 준비
 
@@ -13,18 +27,15 @@ source .venv/bin/activate
 python -m pip install -e '.[test]'
 ```
 
-## 직접 구현할 작업
+## 코드 흐름 읽기
 
-먼저 세 스키마를 비교하고 다음을 설명해보세요.
+`src/avro_lab/codec.py`에는 인코딩과 디코딩 코드가 구현되어 있습니다. 먼저 세 스키마를 비교하고 다음을 설명해보세요.
 
 1. `user-signed-up-v1.avsc`가 Writer Schema로 저장한 payload에 필드명이 들어 있을까요?
 2. v2가 추가한 `display_name`의 union과 `default`는 각각 무엇을 의미할까요?
 3. `user-signed-up-incompatible.avsc`로 옛 payload를 읽으면 왜 실패할까요?
 
-그다음 `src/avro_lab/codec.py`의 두 TODO를 구현하세요.
-
-- `encode_v1`: `BytesIO`와 `schemaless_writer`를 사용해 v1 스키마로 dict를 Avro binary bytes로 인코딩합니다.
-- `decode`: Writer Schema는 항상 v1이고, Reader Schema는 인자로 받은 스키마를 사용합니다. Avro binary에는 보통 Writer Schema가 함께 들어 있지 않으므로 decoder가 이를 알아야 합니다.
+코드를 따라가며 `encode_v1()`이 `WRITER_V1`으로 payload를 쓰는 부분과 `decode()`가 Writer/Reader Schema를 함께 전달하는 부분을 확인하세요.
 
 ## 검증
 
@@ -32,7 +43,7 @@ python -m pip install -e '.[test]'
 python -m pytest -q
 ```
 
-현재 테스트 3개는 `codec.py`의 두 TODO가 구현되기 전까지 `NotImplementedError`로 실패하는 것이 정상입니다. 구현 후에는 다음을 검증합니다.
+테스트는 다음을 검증합니다.
 
 - v1 이벤트를 binary Avro로 왕복 변환하면 원래 필드가 보존됨
 - v1 payload를 v2 Reader로 읽으면 기본값 `display_name=None`이 채워짐
