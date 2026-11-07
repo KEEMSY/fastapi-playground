@@ -9,9 +9,12 @@
 - [ ] MySQL에서 주문부터 영수증까지 한 건을 연결해 본다.
 - [ ] Outbox relay의 중복 발행 가능성과 consumer Inbox의 역할을 설명한다.
 - [ ] Inbox commit과 Celery 제출 사이의 유실 가능성을 설명한다.
-- [ ] 뒤 단계의 Task Outbox를 적용한 뒤 현재와 보장 차이를 비교한다.
+- [ ] Task Outbox를 추가해 Inbox와 작업 발행 의도를 원자적으로 기록한다.
+- [ ] task relay의 재발행 가능성과 업무 효과 멱등성의 차이를 설명한다.
 
-## 1. 한 건의 주문이 지나가는 길
+## 1. 기준 구현(커밋 `09cfec5`) 복습 흐름
+
+아래는 Task Outbox 적용 전 기준 흐름이다. 다음 절에서 현재 구현과 달라진 task 전달 부분을 비교한다.
 
 ```mermaid
 sequenceDiagram
@@ -67,8 +70,9 @@ API 응답은 주문이 DB에 접수됐다는 뜻이다. 응답 시점에 Rabbit
 | Outbox relay | pending 이벤트를 Avro로 인코딩해 RabbitMQ에 발행 | `src/order_flow/relay.py`, `src/order_flow/events.py` |
 | RabbitMQ | 하나의 도메인 이벤트를 독립 구독 큐에 fan-out | `orders.events` exchange |
 | audit consumer | 감사 구독의 이벤트 처리 여부를 기록 | `src/order_flow/consumer.py` |
-| receipts consumer | 영수증 구독의 이벤트 처리 여부를 기록하고 Celery task 제출 | `src/order_flow/dispatch.py` |
+| receipts consumer | 영수증 구독의 Inbox와 Celery task 발행 의도를 기록 | `src/order_flow/dispatch.py` |
 | Celery worker | 주문별 영수증 효과를 한 번만 DB에 기록 | `src/order_flow/tasks.py`, `src/order_flow/receipts.py` |
+| Task Outbox relay (1단계에서 추가) | pending task command를 결정적 task ID로 Celery에 발행 | `src/order_flow/task_relay.py` |
 
 | 테이블 | 저장 내용 | 중복 방지 기준 |
 |---|---|---|
@@ -76,6 +80,7 @@ API 응답은 주문이 DB에 접수됐다는 뜻이다. 응답 시점에 Rabbit
 | `idempotency_records` | HTTP 요청 키, 본문 hash, 재생할 응답 | `key` |
 | `outbox_events` | 발행할 `order.created` 이벤트, 발행 상태와 시도 횟수 | 이벤트 `id` |
 | `processed_messages` | 각 RabbitMQ 구독자가 처리한 이벤트 | `(consumer_name, message_id)` |
+| `task_dispatch_outbox` (1단계에서 추가) | Celery에 전달할 영수증 명령과 전달 상태 | 원본 이벤트 ID |
 | `order_receipts` | 영수증 처리 결과 | `order_id` |
 
 여기서 멱등성은 한 가지 키로 전체 시스템을 덮는 기능이 아니다. HTTP 재시도는 `Idempotency-Key`, consumer 재전달은 consumer 이름과 메시지 ID, Celery 재실행은 주문 ID로 각각 막는다.
@@ -141,13 +146,52 @@ Relay는 `pending` 행을 `FOR UPDATE SKIP LOCKED`로 잠그고 메시지를 per
 
 ### Inbox와 Celery 사이
 
-현재 `record_and_dispatch`는 Inbox 기록 트랜잭션을 끝낸 다음 `send_order_receipt.delay(...)`를 호출한다. 둘은 원자적이지 않다. Inbox 커밋 직후 task 제출 전에 consumer가 종료되면 RabbitMQ가 이벤트를 다시 전달하더라도 Inbox 중복으로 판단해 task 제출을 건너뛸 수 있고, 영수증이 누락될 수 있다. 다음 Task Outbox 학습 단계에서 이 구간을 줄인다.
+기준 구현에서는 consumer의 `record_and_dispatch`가 Inbox 트랜잭션 뒤에 `send_order_receipt.delay(...)`를 호출했다. Inbox 커밋과 Celery 제출은 원자적이지 않아 중간 종료 시 영수증 task가 누락될 수 있었다. 1단계에서 이 구간을 Task Outbox로 보완했다.
+
+현재 `record_and_enqueue`는 `orders.receipts`용 Inbox 행과 `task_dispatch_outbox` 명령을 같은 DB 트랜잭션에서 저장한다. 별도 `task-relay` 프로세스는 pending 명령을 잠그고 `receipt-{이벤트ID}` 형식의 결정적 task ID로 publisher confirm을 켠 Celery broker에 제출한 뒤 `dispatched` 상태로 바꾼다. 제출이 실패하면 행은 pending으로 남고, 시도 횟수는 기록되어 다음 poll에서 재시도된다.
 
 ### Celery 작업
 
-작업은 late ack와 예외 재시도를 설정한다. worker가 작업을 반복 수행해도 `order_receipts.order_id` 기본 키로 영수증 효과는 한 건만 남는다. 이것은 업무 효과의 멱등성이지 broker에 task가 한 번만 전달된다는 보장은 아니다.
+작업은 late ack와 예외 재시도를 설정한다. worker가 작업을 반복 수행해도 `order_receipts.order_id` 기본 키로 영수증 효과는 한 건만 남는다. 이것은 업무 효과의 멱등성이지 broker에 task가 한 번만 전달된다는 보장은 아니다. task relay가 broker 발행 확인을 받았어도 DB 상태 변경 전에 종료되면 같은 task ID로 재제출할 수 있다. Celery는 task ID만으로 중복 실행을 제거하지 않으므로 worker의 DB 멱등성이 계속 필요하다.
 
-## 6. 복습 질문
+## 6. Task Outbox 단계 확인하기
+
+Task Outbox는 domain event Outbox와 목적이 다르다. `outbox_events`는 주문 트랜잭션에서 RabbitMQ domain event 발행을 예약한다. `task_dispatch_outbox`는 receipt consumer가 처리한 event에 대응하는 Celery command 발행을 예약한다.
+
+```mermaid
+sequenceDiagram
+    participant MQ as RabbitMQ
+    participant C as orders.receipts consumer
+    participant DB as MySQL
+    participant TR as task-relay
+    participant CB as Celery broker
+    participant W as Celery worker
+
+    MQ->>C: order.created
+    C->>DB: Inbox + TaskDispatchOutbox 한 트랜잭션 커밋
+    C-->>MQ: ack
+    TR->>DB: pending task command 잠금
+    TR->>CB: task ID receipt-{event_id}로 publish
+    CB-->>TR: publisher confirm
+    TR->>DB: dispatched 상태 커밋
+    CB->>W: receipt task
+    W->>DB: order_id 기준 영수증 저장
+```
+
+```sql
+SELECT id, order_id, status, attempts, created_at, dispatched_at
+FROM task_dispatch_outbox
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+정상 완료된 명령은 `dispatched`이며, `attempts`는 relay가 시도한 횟수다. `task-relay`와 `celery-worker` 로그를 함께 보며 같은 order ID와 결정적 task ID를 확인한다.
+
+- [ ] Inbox와 task command가 한 트랜잭션인 이유를 설명한다.
+- [ ] RabbitMQ confirm 뒤 task relay가 죽으면 어떤 중복이 생기는지 설명한다.
+- [ ] 결정적 task ID와 receipt 테이블의 `order_id` 고유 키가 각각 무엇을 보장하는지 구분한다.
+
+## 7. 복습 질문
 
 각 항목을 코드 위치를 들어 설명해 본다.
 
@@ -161,4 +205,4 @@ Relay는 `pending` 행을 `FOR UPDATE SKIP LOCKED`로 잠그고 메시지를 per
 
 ## 다음 단계 미리보기
 
-Task Outbox 단계에서는 `orders.receipts` Inbox 처리와 작업 발행 의도를 DB 트랜잭션 하나로 묶는다. 새 relay가 그 의도를 Celery broker로 전달한다. Broker 발행 확인 뒤 상태 저장 전에 relay가 죽으면 task 중복 제출은 여전히 가능하므로 전달은 at-least-once다. 결정적인 task ID와 `order_id` 멱등성은 재실행의 효과를 한 번으로 제한한다.
+다음은 주문 ID로 현재 처리 단계를 확인하는 읽기 전용 상태 조회와 API부터 Celery worker까지 로그를 연결하는 추적 정보다.

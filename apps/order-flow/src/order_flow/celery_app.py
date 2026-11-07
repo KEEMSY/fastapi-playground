@@ -13,5 +13,6 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_serializer="json",
     accept_content=["json"],
+    broker_transport_options={"confirm_publish": True},
 )
 celery_app.autodiscover_tasks(["order_flow"])

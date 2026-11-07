@@ -5,7 +5,7 @@ import os
 import aio_pika
 
 from order_flow.db import SessionFactory
-from order_flow.dispatch import record_and_dispatch
+from order_flow.dispatch import record_and_enqueue
 from order_flow.events import decode_order_created
 
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +22,7 @@ async def consume_queue(queue_name: str, channel, exchange):
         async for message in messages:
             async with message.process(requeue=True):
                 event = decode_order_created(message.body)
-                is_new = await record_and_dispatch(queue_name, event, SessionFactory)
+                is_new = await record_and_enqueue(queue_name, event, SessionFactory)
                 logger.info("queue=%s message_id=%s duplicate=%s", queue_name, event["message_id"], not is_new)
 
 

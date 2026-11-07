@@ -36,6 +36,7 @@ sequenceDiagram
     participant Relay as Outbox relay
     participant MQ as RabbitMQ
     participant C as Event consumers
+    participant TR as Task Outbox relay
     participant W as Celery worker
 
     Client->>API: POST /orders + Idempotency-Key
@@ -45,12 +46,14 @@ sequenceDiagram
     Relay->>MQ: Publish persistent Avro event, await confirm
     Relay->>DB: Mark event published
     MQ->>C: Fan out to orders.audit and orders.receipts
-    C->>DB: Record (consumer_name, message_id)
-    C->>W: Submit receipt task from orders.receipts
+    C->>DB: Inbox + TaskDispatchOutbox in one transaction
+    TR->>DB: Lock pending task command
+    TR->>W: Publish Celery task with deterministic task ID
+    TR->>DB: Mark task command dispatched
     W->>DB: Insert one order_receipts row
 ```
 
-The event queues represent separate subscribers to the same fact. Only `orders.receipts` submits a command to Celery. RabbitMQ's `orders.events` exchange handles domain events; Celery uses the `order.tasks` queue for work commands.
+The event queues represent separate subscribers to the same fact. Only `orders.receipts` records a task command in `task_dispatch_outbox`; the separate task relay submits it to Celery. RabbitMQ's `orders.events` exchange handles domain events; Celery uses the `order.tasks` queue for work commands.
 
 ## Create an order
 
@@ -84,6 +87,12 @@ In RabbitMQ management, open **Exchanges** and inspect `orders.events` and its b
 docker compose -f apps/order-flow/compose.yaml logs -f celery-worker
 ```
 
+Inspect task publication attempts with:
+
+```sh
+docker compose -f apps/order-flow/compose.yaml logs -f task-relay
+```
+
 To inspect MySQL from a terminal:
 
 ```sh
@@ -97,6 +106,7 @@ SHOW TABLES;
 SELECT * FROM orders ORDER BY created_at DESC LIMIT 10;
 SELECT * FROM outbox_events ORDER BY created_at DESC LIMIT 10;
 SELECT * FROM processed_messages ORDER BY processed_at DESC LIMIT 10;
+SELECT * FROM task_dispatch_outbox ORDER BY created_at DESC LIMIT 10;
 SELECT * FROM order_receipts ORDER BY sent_at DESC LIMIT 10;
 ```
 
@@ -105,10 +115,12 @@ To trace one order, replace the ID with the value returned by the API:
 ```sql
 SELECT o.id AS order_id, o.sku, o.quantity,
        e.id AS event_id, e.status AS outbox_status,
-       p.consumer_name, r.sent_at AS receipt_recorded_at
+       p.consumer_name, t.status AS task_status, t.attempts AS task_attempts,
+       r.sent_at AS receipt_recorded_at
 FROM orders AS o
 JOIN outbox_events AS e ON e.aggregate_id = o.id
 LEFT JOIN processed_messages AS p ON p.message_id = e.id
+LEFT JOIN task_dispatch_outbox AS t ON t.id = e.id
 LEFT JOIN order_receipts AS r ON r.order_id = o.id
 WHERE o.id = 'YOUR_ORDER_ID';
 ```
@@ -119,7 +131,7 @@ Expect `outbox_status = published`, one row for each consumer (`orders.audit` an
 
 The relay publishes while holding the Outbox row lock. If RabbitMQ confirms a message but the relay exits before MySQL commits the `published` status, it may publish the event again after restart. The consumers deduplicate by `(consumer_name, message_id)`.
 
-The `orders.receipts` consumer commits its Inbox record before it submits the Celery task. A crash between those operations can leave a processed event without a receipt task. This lab leaves that dual-write gap visible as a follow-up exercise: consider a task-dispatch Outbox if the enqueue itself needs a durable guarantee. The receipt task is idempotent by `order_id`, uses late acknowledgment, and retries failures with backoff.
+The receipts consumer commits its Inbox record and task-dispatch Outbox command in one MySQL transaction. The task relay publishes pending commands and marks them dispatched after Celery's publisher confirm. If the broker accepts a task but the relay loses the confirmation or exits before the DB update, it can submit that task again with the same deterministic task ID. Celery does not deduplicate tasks by ID, so the receipt effect remains protected by the `order_id` primary key. This is at-least-once delivery, not exactly-once execution. The task uses late acknowledgment and retries failures with backoff.
 
 ## Tests
 
