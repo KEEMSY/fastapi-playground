@@ -37,6 +37,7 @@ async def relay_once(exchange, batch_size: int = 20) -> int:
                 row.status = "published"
                 row.attempts += 1
                 published += 1
+                logger.info("published order_id=%s event_id=%s", row.aggregate_id, row.id)
     return published
 
 

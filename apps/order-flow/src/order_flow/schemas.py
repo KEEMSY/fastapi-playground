@@ -11,3 +11,12 @@ class OrderResponse(BaseModel):
     sku: str
     quantity: int
     status: str
+
+
+class OrderProgressResponse(BaseModel):
+    order_id: str
+    order_status: str
+    event_status: str | None
+    processed_consumers: list[str]
+    receipt_task_status: str | None
+    receipt_recorded: bool

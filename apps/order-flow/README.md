@@ -79,6 +79,14 @@ curl -i http://localhost:17777/orders \
   -d '{"sku":"book-1","quantity":1}'
 ```
 
+Check asynchronous progress by using the order ID returned above:
+
+```sh
+curl -i http://localhost:17777/orders/ORDER_ID_HERE
+```
+
+The response reports the order status, Outbox event status, consumer names recorded in the Inbox, task-dispatch status, and whether a receipt row exists. It is a snapshot assembled from current DB rows; polling may show progress between those stages.
+
 ## Inspect the results
 
 In RabbitMQ management, open **Exchanges** and inspect `orders.events` and its bindings to `orders.audit` and `orders.receipts`. Under **Queues and Streams**, both queues should have a consumer. Message count may already be zero because the consumers acknowledge messages promptly. The Celery worker listens on `order.tasks`; its output is available with:
@@ -125,7 +133,7 @@ LEFT JOIN order_receipts AS r ON r.order_id = o.id
 WHERE o.id = 'YOUR_ORDER_ID';
 ```
 
-Expect `outbox_status = published`, one row for each consumer (`orders.audit` and `orders.receipts`), and a non-null receipt timestamp. The two consumer rows describe two independent subscribers processing one event; they do not represent two orders.
+Expect `outbox_status = published`, one row for each consumer (`orders.audit` and `orders.receipts`), `task_status = dispatched`, and a non-null receipt timestamp. The two consumer rows describe two independent subscribers processing one event; they do not represent two orders.
 
 ## Delivery guarantees to examine
 

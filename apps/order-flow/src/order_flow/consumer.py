@@ -23,7 +23,13 @@ async def consume_queue(queue_name: str, channel, exchange):
             async with message.process(requeue=True):
                 event = decode_order_created(message.body)
                 is_new = await record_and_enqueue(queue_name, event, SessionFactory)
-                logger.info("queue=%s message_id=%s duplicate=%s", queue_name, event["message_id"], not is_new)
+                logger.info(
+                    "queue=%s order_id=%s message_id=%s duplicate=%s",
+                    queue_name,
+                    event["order_id"],
+                    event["message_id"],
+                    not is_new,
+                )
 
 
 async def main():

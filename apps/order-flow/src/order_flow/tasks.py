@@ -28,5 +28,5 @@ async def run_receipt_task(order_id: str) -> bool:
 )
 def send_order_receipt(self, order_id: str):
     created = asyncio.run(run_receipt_task(order_id))
-    logger.info("receipt order_id=%s already_exists=%s", order_id, not created)
+    logger.info("receipt order_id=%s task_id=%s already_exists=%s", order_id, self.request.id, not created)
     return {"order_id": order_id, "created": created}

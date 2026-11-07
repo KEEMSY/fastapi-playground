@@ -11,6 +11,7 @@
 - [ ] Inbox commit과 Celery 제출 사이의 유실 가능성을 설명한다.
 - [ ] Task Outbox를 추가해 Inbox와 작업 발행 의도를 원자적으로 기록한다.
 - [ ] task relay의 재발행 가능성과 업무 효과 멱등성의 차이를 설명한다.
+- [ ] 주문 상태 API에서 단계별 처리 현황을 읽고 로그를 ID로 연결한다.
 
 ## 1. 기준 구현(커밋 `09cfec5`) 복습 흐름
 
@@ -203,6 +204,28 @@ LIMIT 10;
 6. Celery task가 두 번 수행될 때 `order_receipts`에 한 행만 남는 이유는 무엇인가?
 7. 이 시스템에서 “exactly once”라고 말할 수 없는 이유는 무엇인가?
 
+## 8. 주문 상태와 로그 추적
+
+`GET /orders/{order_id}`는 새 상태를 따로 저장하지 않는다. `orders`, `outbox_events`, `processed_messages`, `task_dispatch_outbox`, `order_receipts`를 읽어 현재 시점의 진행 정보를 조합한다. 따라서 응답은 비동기 처리 흐름의 스냅샷이며 조회 직후 다음 단계로 바뀔 수 있다.
+
+```sh
+curl http://localhost:17777/orders/ORDER_ID_HERE
+```
+
+응답에서 `event_status`, `processed_consumers`, `receipt_task_status`, `receipt_recorded`를 보고 아직 멈춰 있는 경계를 찾는다. 존재하지 않는 주문 ID는 `404`다.
+
+로그도 같은 주문 ID를 기준으로 따라간다.
+
+```sh
+docker compose -f apps/order-flow/compose.yaml logs -f outbox-relay consumer task-relay celery-worker
+```
+
+Relay 로그는 `order_id`와 `event_id`, consumer 로그는 `order_id`와 `message_id`, task relay와 worker 로그는 `order_id`와 `task_id`를 남긴다. 이벤트 ID는 consumer와 task 사이에서 같은 이벤트를 식별한다. Celery task ID는 `receipt-{event_id}` 형식이다.
+
+- [ ] 주문 ID 하나로 API 상태 응답과 각 프로세스 로그를 연결한다.
+- [ ] task 상태가 `dispatched`여도 receipt 행이 아직 없을 수 있는 이유를 설명한다.
+- [ ] 상태 조회 응답이 강한 일관성의 단일 상태 열이 아니라 여러 저장 지점을 합친 snapshot임을 설명한다.
+
 ## 다음 단계 미리보기
 
-다음은 주문 ID로 현재 처리 단계를 확인하는 읽기 전용 상태 조회와 API부터 Celery worker까지 로그를 연결하는 추적 정보다.
+다음은 consumer의 실패 재전달을 제한하고, 반복 실패 이벤트를 DLQ에서 조사하고 복구하는 흐름이다.

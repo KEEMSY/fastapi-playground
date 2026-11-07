@@ -44,6 +44,12 @@ async def relay_once(session_factory=SessionFactory, publisher=publish_receipt_t
                 row.status = "dispatched"
                 row.dispatched_at = datetime.now(timezone.utc)
                 dispatched += 1
+                logger.info(
+                    "dispatched order_id=%s task_id=%s attempts=%s",
+                    row.order_id,
+                    task_id,
+                    row.attempts,
+                )
     return dispatched
 
 
