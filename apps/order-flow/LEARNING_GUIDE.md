@@ -143,7 +143,7 @@ Relay는 `pending` 행을 `FOR UPDATE SKIP LOCKED`로 잠그고 메시지를 per
 
 ### RabbitMQ consumer
 
-각 큐는 독립 구독이다. 처리 성공 후 메시지를 ack하고 예외가 발생하면 현재 설정은 재전달을 요청한다. 지금은 제한된 재시도/DLQ가 없으므로 poison message가 계속 재전달될 수 있다.
+각 큐는 독립 구독이다. 처리 성공 후 메시지를 ack한다. 실패하면 기본 최대 3회 재시도(최초 처리를 포함해 최대 4회, 환경변수 `CONSUMER_MAX_RETRIES`)까지 queue별 retry 큐로 보내고 3초(`CONSUMER_RETRY_DELAY_MS`) 뒤 해당 consumer 큐로 돌아오게 한다. 재시도 publish가 confirm되면 원본을 ack한다. 허용 횟수를 소진하면 `orders.audit.dlq` 또는 `orders.receipts.dlq`에 보존한다. 이 정책은 일시 오류와 스키마 오류를 구분하지 않고 모두 재시도한 뒤 DLQ로 보낸다.
 
 ### Inbox와 Celery 사이
 
@@ -228,4 +228,4 @@ Relay 로그는 `order_id`와 `event_id`, consumer 로그는 `order_id`와 `mess
 
 ## 다음 단계 미리보기
 
-다음은 consumer의 실패 재전달을 제한하고, 반복 실패 이벤트를 DLQ에서 조사하고 복구하는 흐름이다.
+다음은 DLQ에 쌓인 이벤트의 재생 절차를 직접 확인하고, 이벤트 스키마 호환성 규칙을 테스트하는 단계다.

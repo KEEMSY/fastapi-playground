@@ -67,6 +67,8 @@ services:
     environment:
       DATABASE_URL: mysql+asyncmy://order_flow:order_flow@mysql:3306/order_flow
       AMQP_URL: amqp://order_flow:order_flow@rabbitmq:5672/
+      CONSUMER_MAX_RETRIES: ${CONSUMER_MAX_RETRIES:-3}
+      CONSUMER_RETRY_DELAY_MS: ${CONSUMER_RETRY_DELAY_MS:-3000}
       CELERY_BROKER_URL: amqp://order_flow:order_flow@rabbitmq:5672//
     depends_on:
       mysql:

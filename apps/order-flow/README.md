@@ -53,7 +53,7 @@ sequenceDiagram
     W->>DB: Insert one order_receipts row
 ```
 
-The event queues represent separate subscribers to the same fact. Only `orders.receipts` records a task command in `task_dispatch_outbox`; the separate task relay submits it to Celery. RabbitMQ's `orders.events` exchange handles domain events; Celery uses the `order.tasks` queue for work commands.
+The event queues represent separate subscribers to the same fact. Only `orders.receipts` records a task command in `task_dispatch_outbox`; the separate task relay submits it to Celery. RabbitMQ's `orders.events` exchange handles domain events; Celery uses the `order.tasks` queue for work commands. Consumer failures retry through a queue-specific delay queue (up to 3 retries, 3 seconds by default) and then move to that consumer's durable DLQ.
 
 ## Create an order
 
@@ -101,6 +101,8 @@ Inspect task publication attempts with:
 docker compose -f apps/order-flow/compose.yaml logs -f task-relay
 ```
 
+RabbitMQ also has `orders.audit.retry`, `orders.receipts.retry`, `orders.audit.dlq`, and `orders.receipts.dlq`. To exercise failure handling, stop the relevant consumer, publish an invalid Avro message to `orders.events` with routing key `order.created`, then start the consumer again. Inspect the matching DLQ after the configured retries. A DLQ message can be replayed to `orders.events` with routing key `order.created` after removing its `x-retry-count` and `x-failure-reason` headers; this fans it out to both subscribers, and the subscriber that already processed it will deduplicate through its Inbox record.
+
 To inspect MySQL from a terminal:
 
 ```sh
@@ -140,6 +142,8 @@ Expect `outbox_status = published`, one row for each consumer (`orders.audit` an
 The relay publishes while holding the Outbox row lock. If RabbitMQ confirms a message but the relay exits before MySQL commits the `published` status, it may publish the event again after restart. The consumers deduplicate by `(consumer_name, message_id)`.
 
 The receipts consumer commits its Inbox record and task-dispatch Outbox command in one MySQL transaction. The task relay publishes pending commands and marks them dispatched after Celery's publisher confirm. If the broker accepts a task but the relay loses the confirmation or exits before the DB update, it can submit that task again with the same deterministic task ID. Celery does not deduplicate tasks by ID, so the receipt effect remains protected by the `order_id` primary key. This is at-least-once delivery, not exactly-once execution. The task uses late acknowledgment and retries failures with backoff.
+
+Consumer failures retry through durable per-queue delay queues and are routed to per-consumer DLQs after the configured limit. The consumer publisher uses RabbitMQ publisher confirms before acknowledging the failed original message. Replay from a DLQ should reset `x-retry-count`; otherwise the next failure returns directly to the DLQ. Replay to `order.created` fans out to both consumers, whose Inbox keys suppress duplicate effects.
 
 ## Tests
 
