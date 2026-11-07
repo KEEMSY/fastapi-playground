@@ -12,14 +12,26 @@
 
 ## Commit checkpoints
 
-1. `docs: 주문 이벤트 학습 커리큘럼 설계 기록` — design already committed as `cdc98b0`.
+1. `docs: 주문 이벤트 학습 커리큘럼 설계 기록` — design already committed as `645eaa9`.
 2. `docs: 주문 이벤트 현재 흐름 복습 자료 추가` — stage 0 learning guide.
 3. `feature: 영수증 작업 전달에 Task Outbox 적용` — stage 1 schema, code, tests, exercise.
 4. `feature: 주문 처리 상태 조회와 추적 정보 추가` — stage 2 API, logs, tests, exercise.
 5. `feature: RabbitMQ consumer 재시도와 DLQ 구성` — stage 3 retry/DLQ, recovery guide and tests.
-6. `docs: Avro 이벤트 스키마 진화 학습 단계 추가` — stage 4 compatibility rules and contract exercises/tests.
+6. `feature: Avro 이벤트 스키마 버전 호환성 실습 추가` — stage 4 compatibility rules and contract exercises/tests.
 
 Every checkpoint must have a clean worktree after commit. Do not combine a later stage into an earlier commit.
+
+## Completed checkpoints
+
+| Stage | Commit | Result |
+|---|---|---|
+| Design | `645eaa9` | Curriculum design recorded |
+| Plan | `7436c47` | Implementation plan recorded |
+| 0 | `ab1aa79` | Baseline flow review guide |
+| 1 | `85e737c` | Task Outbox and Celery task relay |
+| 2 | `78658a4` | Derived order progress API and correlated logs |
+| 3 | `abe9112` | Bounded retries and per-consumer DLQs |
+| 4 | `0e0533c` | Versioned Avro writer/reader compatibility lab |
 
 ## Task 0: Review existing flow and document it
 
@@ -126,3 +138,11 @@ Every checkpoint must have a clean worktree after commit. Do not combine a later
 - Compare every guarantee in README and LEARNING_GUIDE to code and tests.
 - Confirm each stage has its own commit and a clean working tree.
 - Keep learner checklists unchecked until the user performs the exercise or explains the concept.
+
+## Verification record
+
+- Order Flow suite: 21 passed in an isolated environment with `fastavro` installed; this exercises the Avro compatibility tests instead of skipping them.
+- `docker compose -f apps/order-flow/compose.yaml config -q`: passed.
+- Alembic history: `0001_order_outbox -> 0002_task_dispatch_outbox` is the current head.
+- `git diff --check`: passed.
+- Docker daemon was unavailable, so container startup, MySQL migration application, and live RabbitMQ/DLQ exercises remain for the learner to run locally.
