@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("order_flow.relay")
 AMQP_URL = os.getenv("AMQP_URL", "amqp://order_flow:order_flow@localhost:5673/")
 EXCHANGE_NAME = "orders.events"
+SCHEMA_VERSION = int(os.getenv("ORDER_CREATED_SCHEMA_VERSION", "1"))
 
 
 async def relay_once(exchange, batch_size: int = 20) -> int:
@@ -28,10 +29,11 @@ async def relay_once(exchange, batch_size: int = 20) -> int:
             )).all()
             for row in rows:
                 message = aio_pika.Message(
-                    body=encode_order_created(row.payload),
+                    body=encode_order_created(row.payload, writer_version=SCHEMA_VERSION),
                     message_id=row.id,
                     content_type="avro/binary",
                     delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+                    headers={"schema-version": SCHEMA_VERSION},
                 )
                 await exchange.publish(message, routing_key=row.event_type, mandatory=True)
                 row.status = "published"

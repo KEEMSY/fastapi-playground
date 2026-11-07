@@ -53,7 +53,7 @@ sequenceDiagram
     W->>DB: Insert one order_receipts row
 ```
 
-The event queues represent separate subscribers to the same fact. Only `orders.receipts` records a task command in `task_dispatch_outbox`; the separate task relay submits it to Celery. RabbitMQ's `orders.events` exchange handles domain events; Celery uses the `order.tasks` queue for work commands. Consumer failures retry through a queue-specific delay queue (up to 3 retries, 3 seconds by default) and then move to that consumer's durable DLQ.
+The event queues represent separate subscribers to the same fact. Only `orders.receipts` records a task command in `task_dispatch_outbox`; the separate task relay submits it to Celery. RabbitMQ's `orders.events` exchange handles domain events; Celery uses the `order.tasks` queue for work commands. Consumer failures retry through a queue-specific delay queue (up to 3 retries, 3 seconds by default) and then move to that consumer's durable DLQ. Avro writer versions are carried in the AMQP `schema-version` header; the relay writes v1 by default and can be switched to v2 with `ORDER_CREATED_SCHEMA_VERSION=2`.
 
 ## Create an order
 

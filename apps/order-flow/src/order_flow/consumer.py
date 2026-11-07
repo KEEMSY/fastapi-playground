@@ -7,7 +7,7 @@ import aio_pika
 from order_flow.db import SessionFactory
 from order_flow.delivery import route_failed_message
 from order_flow.dispatch import record_and_enqueue
-from order_flow.events import decode_order_created
+from order_flow.events import decode_order_created_message
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("order_flow.consumer")
@@ -62,7 +62,7 @@ async def consume_queue(queue_name: str, channel, retry_exchange, dead_exchange)
     async with queue.iterator() as messages:
         async for message in messages:
             try:
-                event = decode_order_created(message.body)
+                event = decode_order_created_message(message.body, message.headers)
                 is_new = await record_and_enqueue(queue_name, event, SessionFactory)
             except Exception as error:
                 outcome = await route_failed_message(

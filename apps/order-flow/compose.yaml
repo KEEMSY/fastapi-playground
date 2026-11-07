@@ -53,6 +53,7 @@ services:
     environment:
       DATABASE_URL: mysql+asyncmy://order_flow:order_flow@mysql:3306/order_flow
       AMQP_URL: amqp://order_flow:order_flow@rabbitmq:5672/
+      ORDER_CREATED_SCHEMA_VERSION: ${ORDER_CREATED_SCHEMA_VERSION:-1}
     depends_on:
       mysql:
         condition: service_healthy

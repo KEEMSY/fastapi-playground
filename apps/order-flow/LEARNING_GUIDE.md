@@ -226,6 +226,31 @@ Relay 로그는 `order_id`와 `event_id`, consumer 로그는 `order_id`와 `mess
 - [ ] task 상태가 `dispatched`여도 receipt 행이 아직 없을 수 있는 이유를 설명한다.
 - [ ] 상태 조회 응답이 강한 일관성의 단일 상태 열이 아니라 여러 저장 지점을 합친 snapshot임을 설명한다.
 
+## 9. Avro 스키마 진화
+
+현재 v2는 기존 필드를 그대로 두고 nullable `customer_note`를 `default: null`과 함께 추가한다. 호환성은 writer schema와 reader schema를 둘 다 알아야 판단할 수 있다.
+
+| Writer | Reader | 결과 | 이유 |
+|---|---|---|---|
+| v1 | v2 | 호환 | 새 reader가 v1 메시지에 없는 `customer_note`를 기본값 `null`로 채움 |
+| v2 | v1 | 호환 | 구 reader가 모르는 추가 필드 `customer_note`를 무시함 |
+| v1 `quantity: int` | reader `quantity: string` | 비호환 | 기존 필드 타입을 바꿈 |
+| v1 | 새 필수 필드에 default가 없는 reader | 비호환 | 과거 메시지에는 새 필드 값이 없음 |
+
+테스트는 `encode_order_created(..., writer_version=1|2)`와 `decode_order_created(..., writer_version=..., reader_version=...)`로 두 스키마를 명시해 resolution을 검증한다. 현재 relay는 기본 v1을 쓰지만 RabbitMQ 메시지 header에 `schema-version`을 붙이고, consumer는 그 값을 writer schema 선택에 사용한다. header가 없는 기존 메시지는 v1으로 읽는다. Compose의 `ORDER_CREATED_SCHEMA_VERSION=2`를 지정하면 relay가 v2 writer로 동작한다.
+
+실습 순서:
+
+1. 기본 v1 relay로 주문을 생성하고 이벤트 메시지의 `schema-version=1`을 확인한다.
+2. consumer가 v2 reader를 사용하고 있는지 `decode_order_created_v2` 테스트를 확인한다.
+3. Compose 환경변수 `ORDER_CREATED_SCHEMA_VERSION=2`로 relay만 재시작하고 주문을 생성한다.
+4. `customer_note`가 없으면 writer 기본값 `null`로 기록되고 consumer가 v2 writer를 읽는 것을 확인한다.
+5. 테스트에서 `quantity` 타입 변경이나 default 없는 필드 추가가 실패하는 이유를 설명한다.
+
+- [ ] v1 writer → v2 reader 및 v2 writer → v1 reader가 각각 무엇을 의미하는지 설명한다.
+- [ ] 기존 필드를 삭제하거나 타입을 바꾸는 작업이 위험한 이유를 설명한다.
+- [ ] 메시지 header의 writer schema 버전과 consumer의 reader schema 버전을 구분한다.
+
 ## 다음 단계 미리보기
 
-다음은 DLQ에 쌓인 이벤트의 재생 절차를 직접 확인하고, 이벤트 스키마 호환성 규칙을 테스트하는 단계다.
+다음은 RabbitMQ에서 실제 DLQ 재생을 실행하고, 각 보장 범위를 직접 설명하는 최종 복습이다.
