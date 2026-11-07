@@ -2,6 +2,8 @@
 
 Order Flow is an isolated learning app for async FastAPI and SQLAlchemy, transactional Outbox publishing, Avro, RabbitMQ consumers, Celery tasks, and idempotency. It has its own Compose stack, ports, and MySQL volume; it does not reuse the root app stack.
 
+For the step-by-step review, failure scenarios, SQL walkthrough, and learner checklist, see [LEARNING_GUIDE.md](LEARNING_GUIDE.md).
+
 ## Start and stop
 
 From the repository root:
