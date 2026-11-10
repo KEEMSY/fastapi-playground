@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consign Console</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --line: #e3e6ea; --text: #1b1f24; --muted: #6b7380;
+    --accent: #2f6fed; --ok: #1a9e5a; --warn: #c98a00; --bad: #d64545; --chip: #eef1f5;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;  /* 그래프 계열색(고정 순서). dataviz 검증기로 확인 */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1216; --panel: #171b21; --line: #2a3038; --text: #e6e9ee; --muted: #8b94a1;
+            --accent: #5b8ff9; --ok: #3cc47c; --warn: #e0a82e; --bad: #f06a6a; --chip: #222832;
+            --s1: #3987e5; --s2: #d95926; --s3: #199e70; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 20px;
+           border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+  header h1 { font-size: 16px; margin: 0; }
+  header .sp { flex: 1; }
+  main { padding: 14px 20px 40px; display: grid; gap: 14px; max-width: 1500px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  h2 { font-size: 13px; margin: 0 0 8px; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+  h2 b { color: var(--text); }
+  /* 첫 화면: 왼쪽 시나리오(하는 것) · 오른쪽 구성도(보이는 것). 스크롤 없이 원인과 결과를 같이 본다 */
+  .top { display: grid; grid-template-columns: 420px 1fr; gap: 14px; align-items: start; }
+  .side { position: sticky; top: 62px; max-height: calc(100vh - 76px); overflow-y: auto; }
+  .right { display: grid; gap: 14px; min-width: 0; }
+  .row2 { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 14px; }
+  .pipe { display: grid; grid-template-columns: 1fr 24px 1fr 24px 1fr; align-items: stretch; }
+  .arrow { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 18px; }
+  @media (max-width: 1100px) { .top { grid-template-columns: 1fr; } .side { position: static; max-height: none; } }
+  @media (max-width: 900px) {
+    .row2, .pipe { grid-template-columns: 1fr; }
+    .arrow { transform: rotate(90deg); height: 24px; }
+  }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  label { font-size: 12px; color: var(--muted); display: grid; gap: 3px; }
+  input { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px;
+          background: var(--bg); color: var(--text); width: 100%; }
+  button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+           border: 1px solid var(--line); background: var(--chip); color: var(--text); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .4; cursor: default; }
+  .actions { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  td { padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { max-height: 360px; overflow: auto; }
+  .chip { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 12px; background: var(--chip); }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); } .muted { color: var(--muted); }
+  .pod { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-family: ui-monospace, Menlo, monospace; color: #fff; }
+  .stat { display: flex; gap: 18px; margin-bottom: 10px; flex-wrap: wrap; }
+  .stat div { display: grid; }
+  .stat b { font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  tr.new { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--accent) 25%, transparent); } to { background: transparent; } }
+  .note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+
+  /* 시나리오 */
+  .scen { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+  .scen.pass { border-color: var(--ok); } .scen.fail { border-color: var(--bad); }
+  .scen header { all: unset; display: flex; gap: 8px; align-items: center; }
+  .scen h3 { font-size: 13px; margin: 0; flex: 1; }
+  .scen p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+  .scen ol { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12.5px; display: grid; gap: 3px; }
+  .scen li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 4px; }
+  .scen li .d { grid-column: 2; color: var(--muted); font-size: 12px; }
+  .scen li.fail .d { color: var(--bad); }
+  .cmd { display: flex; gap: 6px; align-items: center; margin-top: 3px; }
+  .cmd code { flex: 1; min-width: 0; background: var(--chip); padding: 2px 6px; border-radius: 4px; overflow-x: auto; white-space: nowrap; }
+  .cmd button { flex: none; white-space: nowrap; padding: 1px 7px; font-size: 12px; }
+  #summary { font-weight: 600; }
+  /* 시나리오 안 작은 선 그래프 */
+  .viz { margin-top: 8px; font-size: 12px; }
+  .viz .cap { color: var(--text); font-weight: 600; }
+  .viz .lg { display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); margin: 2px 0; }
+  .viz .lg i { display: inline-block; width: 12px; height: 2px; vertical-align: middle; margin-right: 4px; }
+  .viz svg { width: 100%; height: auto; display: block; cursor: crosshair; }
+  .viz svg text { fill: var(--muted); font-size: 10px; }
+  .viz svg .ax { stroke: var(--line); }
+  .viz .rd { color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.5em; }
+
+  /* 탭 */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: -4px -2px 12px; flex-wrap: wrap; }
+  .tabs button { border: 0; background: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 6px 10px; color: var(--muted); }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .tabs .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 4px; vertical-align: middle; }
+  [data-panel] { display: none; } [data-panel].on { display: block; }
+
+  /* 구성도: SVG(선) 위에 HTML 노드를 같은 좌표계(1000×340)로 % 배치 */
+  .archwrap { overflow-x: auto; }
+  .arch { position: relative; aspect-ratio: 1000 / 340; min-width: 760px; max-width: 1100px; margin: 0 auto; }
+  .arch svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .arch path { fill: none; stroke: var(--line); stroke-width: 2.5; }
+  .arch path.sync { stroke-dasharray: 6 5; }
+  .arch text { fill: var(--muted); font-size: 12px; }
+  .arch text.count { fill: var(--accent); font-size: 14px; font-weight: 700; }
+  .node { position: absolute; transform: translate(-50%, -50%); width: 17%; padding: 6px 9px; font-size: 12px;
+          background: var(--panel); border: 1.5px solid var(--line); border-radius: 8px; transition: border-color .3s, box-shadow .3s; }
+  .node h3 { font-size: 13px; margin: 0 0 2px; }
+  .node.store { background: var(--chip); }
+  .node.hot { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .node.down { border-color: var(--bad); }
+  details summary { cursor: pointer; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .steps { margin: 6px 0 0; padding-left: 0; list-style: none; display: grid; gap: 3px; font-size: 13px; }
+  .steps i { display: inline-block; width: 1.6em; color: var(--accent); font-style: normal; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Consign Console</h1>
+  <span class="muted">이 화면을 내려준 Pod</span> <span id="pagePod"></span>
+  <span class="sp"></span>
+  <label style="display:flex;gap:6px;align-items:center;color:var(--text)"><input type="checkbox" id="live" checked style="width:auto"> 1초마다 갱신</label>
+</header>
+
+<main>
+  <div class="top">
+    <section class="side">
+      <h2 style="display:flex;align-items:center;gap:8px"><b>시나리오</b><span class="sp" style="flex:1"></span><span id="summary"></span>
+        <button class="primary" id="runAll">자동 시나리오 전부 실행</button></h2>
+      <div id="scens"></div>
+      <p class="note">실행하면 오른쪽 구성도에서 데이터가 지나가는 것이 보이고, 단계마다 판정(✅/❌)과 걸린 시간이 남는다. 터미널 단계는 명령을 복사해 실행하면 화면이 알아서 다음으로 넘어간다.</p>
+    </section>
+
+    <div class="right">
+    <section>
+      <h2><b>구성도 · 데이터 흐름</b> · 점선 = 동기 HTTP, 실선 = DB·이벤트. 파란 점 = 서버가 받은 요청·내부 이동 하나하나(×n = 1초 사이 건수)</h2>
+      <div class="archwrap"><div class="arch">
+        <svg viewBox="0 0 1000 340">
+          <path id="e1" class="sync" d="M90 90 L330 90"/>
+          <path id="e6" class="sync" d="M330 90 L850 90"/>
+          <path id="e2" d="M330 90 L330 260"/>
+          <path id="e3" d="M330 260 L600 260"/>
+          <path id="e4" d="M600 260 L850 90"/>
+          <path id="e5" d="M850 90 L850 260"/>
+          <text x="210" y="78" text-anchor="middle">①</text>
+          <text x="590" y="78" text-anchor="middle">⑥ 조회 HTTP</text>
+          <text x="342" y="180">② 한 트랜잭션</text>
+          <text x="465" y="248" text-anchor="middle">③ relay</text>
+          <text x="740" y="185" text-anchor="end">④ XREADGROUP</text>
+          <text x="862" y="180">⑤ INSERT → XACK</text>
+        </svg>
+        <div class="node" id="nBrowser" style="left:9%;top:26.47%"><h3>브라우저</h3><span class="muted">이 콘솔</span></div>
+        <div class="node" id="nConsign" style="left:33%;top:26.47%"><h3>consign <span class="muted">API + relay</span></h3><div id="aConsign" class="muted">–</div></div>
+        <div class="node" id="nSettle" style="left:85%;top:26.47%"><h3>settlement <span class="muted">소비자</span></h3><div id="aSettle" class="muted">–</div></div>
+        <div class="node store" id="nConsignDb" style="left:33%;top:76.47%"><h3>Postgres · consign</h3><div id="aConsignDb" class="muted">–</div></div>
+        <div class="node store" id="nRedis" style="left:60%;top:76.47%"><h3>Redis · <code>sales</code></h3><div id="aRedis" class="muted">–</div></div>
+        <div class="node store" id="nSettleDb" style="left:85%;top:76.47%"><h3>Postgres · settlement</h3><div id="aSettleDb" class="muted">–</div></div>
+      </div></div>
+      <details><summary>단계 설명 ①~⑥ (실제 접속 주소)</summary><ol class="steps" id="steps"></ol></details>
+    </section>
+
+  <section>
+    <nav class="tabs" id="tabs">
+      <button data-tab="journey">판매 여정</button>
+      <button data-tab="items">상품 · 직접 조작</button>
+      <button data-tab="pipe">이벤트 흐름</button>
+      <button data-tab="sellers">정산 비교</button>
+      <button data-tab="log">요청 기록</button>
+    </nav>
+
+    <div data-panel="journey">
+      <h2>판매 한 건씩 단계별 시각 · 각 단계가 DB 에 남긴 값 (Outbox <code>created_at</code>·<code>published_at</code>, 원장 <code>received_at</code>)</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>sale</th><th>판매자</th><th class="num">정산액</th><th>② 판매 커밋</th><th>③ Redis 발행</th><th>⑤ 원장 기록</th><th class="num">전체</th></tr></thead>
+        <tbody id="journey"></tbody>
+      </table></div>
+    </div>
+
+    <div data-panel="items">
+      <div class="row2">
+        <div>
+          <h2><b>상품 등록</b></h2>
+          <form id="f">
+            <label>판매자 ID<input name="seller_id" type="number" value="1" min="1" required></label>
+            <label>수수료율 %<input name="commission_rate" type="number" value="30" min="0" max="100" required></label>
+            <label style="grid-column:1/-1">상품명<input name="name" value="울 코트" required></label>
+            <label style="grid-column:1/-1">가격(원)<input name="price" type="number" value="100000" min="1" required></label>
+            <div class="actions">
+              <button class="primary">등록</button>
+              <button type="button" id="seed">샘플 5개</button>
+            </div>
+          </form>
+          <div id="race"></div>
+        </div>
+        <div>
+          <h2><b>상품</b> · consign DB <code>items</code> (최근 30)</h2>
+          <div class="scroll"><table>
+            <thead><tr><th>ID</th><th>판매자</th><th>상품</th><th class="num">가격</th><th class="num">수수료</th><th>상태</th><th></th></tr></thead>
+            <tbody id="items"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <div data-panel="pipe">
+      <div class="pipe">
+        <div>
+          <h2>consign DB <code>outbox</code></h2>
+          <div class="stat"><div><b id="obWait">–</b><span>발행 대기</span></div><div><b id="obDone">–</b><span>발행됨 (최근 15)</span></div></div>
+          <div class="scroll"><table>
+            <thead><tr><th>#</th><th>sale</th><th class="num">금액</th><th>상태</th></tr></thead>
+            <tbody id="outbox"></tbody>
+          </table></div>
+          <p class="note">판매와 같은 트랜잭션에 쓰인다. relay 가 1초 간격으로 집어 Redis 로 옮긴다.</p>
+        </div>
+        <div class="arrow">→</div>
+        <div>
+          <h2>Redis Stream <code>sales</code></h2>
+          <div class="stat"><div><b id="stLen">–</b><span>스트림 길이</span></div><div><b id="stPend">–</b><span>미확인(pending)</span></div><div><b id="stLag">–</b><span>아직 안 나간 것(lag)</span></div></div>
+          <table>
+            <thead><tr><th>소비자 (settlement Pod)</th><th class="num">pending</th><th class="num">idle</th></tr></thead>
+            <tbody id="consumers"></tbody>
+          </table>
+          <p class="note">소비자 그룹 <code>settlement</code> 의 Pod 들이 메시지를 나눠 받는다. pending 은 받았지만 ACK 전.</p>
+        </div>
+        <div class="arrow">→</div>
+        <div>
+          <h2>settlement DB <code>ledger</code> <span id="ledgerPod"></span></h2>
+          <div class="stat"><div><b id="lgCount">–</b><span>원장 (최근 15)</span></div></div>
+          <div class="scroll"><table>
+            <thead><tr><th>sale</th><th>판매자</th><th class="num">정산액</th><th>받은 시각</th></tr></thead>
+            <tbody id="ledger"></tbody>
+          </table></div>
+          <p class="note">consign 이 정산 서비스를 HTTP 로 불러 가져온다. 정산 DB 를 직접 읽지 않는다.</p>
+        </div>
+      </div>
+    </div>
+
+    <div data-panel="sellers">
+      <h2>판매자별 정산 합계 · 최종 일관성 — 판매 직후엔 settlement 가 잠깐 뒤처지고, 이벤트가 도착하면 같아진다</h2>
+      <table style="max-width:640px">
+        <thead><tr><th>판매자</th><th class="num">consign</th><th class="num">settlement</th><th></th></tr></thead>
+        <tbody id="sellers"></tbody>
+      </table>
+    </div>
+
+    <div data-panel="log">
+      <h2>두 서비스의 모든 Pod 가 받은 요청과 내부 이동 · Redis 스트림 <code>trace</code> (콘솔 1초 갱신만 제외)</h2>
+      <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="hideProbe" checked style="width:auto"> k8s probe(<code>/healthz</code>·<code>/readyz</code>) 숨김</label>
+      <div class="scroll"><table>
+        <thead><tr><th>시각</th><th>서비스 · Pod</th><th>종류</th><th>요청 / 이동</th><th>응답</th><th class="num">ms</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table></div>
+    </div>
+  </section>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const won = (n) => n == null ? '–' : n.toLocaleString('ko-KR');
+const time = (t) => t ? new Date(t).toLocaleTimeString('ko-KR', { hour12: false }) : '';
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Pod 이름 → 고정 색. 같은 Pod 는 늘 같은 색이라 분산이 눈에 보인다
+const podTag = (name) => {
+  if (!name) return '';
+  let x = 2166136261; for (const c of name) x = Math.imul(x ^ c.charCodeAt(0), 16777619);  // FNV-1a
+  const h = Math.round(((x >>> 0) % 360) * 137.508) % 360;  // 황금각으로 퍼뜨려 비슷한 이름도 색이 갈라지게
+  const short = name.split('-').slice(-1)[0];
+  return `<span class="pod" title="${esc(name)}" style="background:hsl(${h} 55% 45%)">${esc(short)}</span>`;
+};
+
+// ── 탭: 마지막에 본 탭을 기억한다. 안 보는 탭에 새 요청 기록이 생기면 점을 찍는다
+function showTab(name) {
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+  document.querySelectorAll('[data-panel]').forEach((p) => p.classList.toggle('on', p.dataset.panel === name));
+  document.querySelector(`#tabs [data-tab="${name}"] .dot`)?.remove();
+  try { localStorage.setItem('tab', name); } catch {}
+}
+document.querySelectorAll('#tabs button').forEach((b) => b.onclick = () => showTab(b.dataset.tab));
+let saved = null; try { saved = localStorage.getItem('tab'); } catch {}
+showTab(saved && document.querySelector(`[data-panel="${saved}"]`) ? saved : 'journey');
+const mark = (name) => {
+  const b = document.querySelector(`#tabs [data-tab="${name}"]`);
+  if (!b.classList.contains('on') && !b.querySelector('.dot')) b.insertAdjacentHTML('beforeend', '<span class="dot"></span>');
+};
+
+const seen = { outbox: new Set(), ledger: new Set() };
+
+// 요청 기록은 서버가 남긴다(/ops/trace). 그래서 이 화면·curl·k8s probe·relay·정산 소비가 한 줄에 같이 보인다
+async function call(method, path, body) {
+  const r = await fetch(path, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body && JSON.stringify(body) });
+  return { status: r.status, pod: r.headers.get('x-served-by'), data: await r.json().catch(() => null) };
+}
+
+const trace = [];
+let traceAfter = null;
+const KIND = { http: 'HTTP', probe: 'probe', relay: 'relay ③', consume: '소비 ④⑤' };
+function renderLog() {
+  const hide = $('hideProbe').checked;
+  $('log').innerHTML = trace.filter((t) => !(hide && t.kind === 'probe')).slice(0, 200).map((t) => {
+    const cls = !t.status ? '' : t.status < 300 ? 'ok' : t.status < 500 ? 'warn' : 'bad';
+    return `<tr><td>${time(t.at)}</td><td>${t.svc} ${podTag(t.pod)}</td><td><span class="chip">${KIND[t.kind] || t.kind}</span></td>
+      <td><code>${esc(t.what)}</code></td><td class="${cls}">${t.status || ''}</td><td class="num">${t.ms || ''}</td></tr>`;
+  }).join('') || '<tr><td colspan="6" class="muted">기록 없음 — REDIS_URL 이 없으면 기록하지 않는다</td></tr>';
+}
+$('hideProbe').onchange = renderLog;
+
+const count = (rs, k) => rs.reduce((m, r) => (m[r[k]] = (m[r[k]] || 0) + 1, m), {});
+
+async function sell(id) { await call('POST', `/items/${id}/sell`); refresh(); }
+
+async function race(id) {
+  $('race').innerHTML = '<p class="muted">보내는 중…</p>';
+  const rs = await Promise.all(Array.from({ length: 20 }, () => call('POST', `/items/${id}/sell`)));
+  const codes = count(rs, 'status'), pods = count(rs, 'pod');
+  $('race').innerHTML =
+    `<p>상품 #${id} 동시 20건 → <b class="${codes[201] === 1 ? 'ok' : 'bad'}">201 × ${codes[201] || 0}</b> · <span class="warn">409 × ${codes[409] || 0}</span>` +
+    (codes[500] ? ` · <b class="bad">500 × ${codes[500]}</b>` : '') + `<br><span class="muted">처리한 Pod: ${Object.entries(pods).map(([p, n]) => `${podTag(p)} × ${n}`).join(' ')}</span></p>`;
+  refresh();
+}
+
+$('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const v = Object.fromEntries(new FormData(e.target));
+  for (const k of ['seller_id', 'price', 'commission_rate']) v[k] = Number(v[k]);
+  await call('POST', '/items', v);
+  refresh();
+});
+
+$('seed').addEventListener('click', async () => {
+  const names = ['울 코트', '데님 자켓', '캐시미어 니트', '가죽 부츠', '트렌치 코트'];
+  await Promise.all(names.map((name, i) => call('POST', '/items', {
+    seller_id: (i % 3) + 1, name, price: 30000 + i * 17000, commission_rate: [20, 25, 30][i % 3],
+  })));
+  refresh();
+});
+
+// 폴링 응답의 x-served-by 로 지금 살아 있는 consign Pod 를 모은다(Service 가 요청을 나눠 주므로 둘 다 보인다)
+// 원장은 받은 시각 역순이라, 대량 판매 직후엔 최근 15건 밖으로 밀린 판매가 '대기'로 잘못 보였다.
+// ponytail: 넉넉한 창(200)으로 본다 — 더 큰 폭주를 다루게 되면 sale_id 로 골라 묻는 API 로
+const LEDGER = '/ops/settlement/ledger?limit=200';
+const consignPods = new Map();
+const get = (p) => fetch(p, { headers: { 'x-poll': '1' } }).then((r) => { consignPods.set(r.headers.get('x-served-by'), Date.now()); return r.json(); });
+
+// ── 시나리오: 단계마다 판정을 화면에 남긴다. 테스트를 터미널이 아니라 구성도 옆에서 본다
+const K = 'kubectl --context kind-consign';
+const fail = (msg) => { throw new Error(msg); };
+const expect = (got, want, what = '응답') => got === want || fail(`${what} ${got} (기대 ${want})`);
+
+async function waitFor(check, ms = 10000) {
+  const end = Date.now() + ms;
+  for (;;) {
+    const v = await check();
+    if (v) return v;
+    if (Date.now() > end) fail(`${ms / 1000}초 안에 일어나지 않음`);
+    await sleep(400);
+  }
+}
+
+// 터미널에서 할 단계: 명령 + 복사 버튼을 보여 주고, 결과가 화면에 나타날 때까지 기다린다
+const cmd = (c) => `<div class="cmd"><code>${esc(c)}</code><button type="button" onclick="navigator.clipboard.writeText(${esc(JSON.stringify(c))});this.textContent='복사됨'">복사</button></div>`;
+
+const register = async (seller_id) => {
+  const r = await call('POST', '/items', { seller_id, name: '시나리오 상품', price: 100000, commission_rate: 30 });
+  expect(r.status, 201); return r.data;
+};
+const saleOf = (itemId) => waitFor(async () => (await get('/ops/outbox')).find((o) => o.item_id === itemId), 5000);
+const inLedger = async (saleId) => {
+  const l = await get(LEDGER);
+  const row = l.ok && l.data.find((x) => x.sale_id === saleId);
+  return row && `원장 기록, 응답 ${podTag(l.served_by)}`;
+};
+const totalsMatch = (seller) => waitFor(async () => {
+  const [mine, theirs] = await Promise.all([get('/ops/sellers'), get('/ops/settlement/sellers')]);
+  const a = mine.find((s) => s.seller_id === seller), b = theirs.ok && theirs.data.find((s) => s.seller_id === seller);
+  return a && b && a.total_settlement === b.total_settlement && `${won(a.total_settlement)}원 (${a.sold_count}건) = ${won(b.total_settlement)}원`;
+});
+
+// ── 작은 선 그래프. 같은 단위의 계열만 한 축에 그린다(이중 축 금지). 범례 + 끝점 직접 라벨, 마우스를 올리면 그 시점 값
+function lineChart(el, { caption, series, xUnit, yUnit, xMax, yMax }) {
+  const W = 380, H = 120, L = 36, R = 92, T = 8, B = 18;
+  const pts = series.flatMap((s) => s.points);
+  xMax = xMax ?? Math.max(1e-9, ...pts.map((p) => p[0])); yMax = yMax ?? Math.max(1, ...pts.map((p) => p[1]));
+  const X = (x) => L + (x / xMax) * (W - L - R), Y = (y) => T + (1 - y / yMax) * (H - T - B);
+  const fmt = (v) => Number.isInteger(v) ? v.toLocaleString('ko-KR') : v.toFixed(1);
+  // 끝점 라벨이 겹치면 아래로 민다
+  const ends = series.filter((s) => s.points.length).map((s) => ({ s, y: Y(s.points.at(-1)[1]) })).sort((a, b) => a.y - b.y);
+  ends.forEach((e, i) => { if (i && e.y - ends[i - 1].y < 12) e.y = ends[i - 1].y + 12; });
+  const over = (ends.at(-1)?.y ?? 0) - (H - B); if (over > 0) ends.forEach((e) => e.y -= over);  // 바닥 밖으로 밀리면 전체를 올린다
+  el.innerHTML = `<div class="cap">${caption}</div>
+    <div class="lg">${series.map((s) => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('')}</div>
+    <svg viewBox="0 0 ${W} ${H}">
+      <line class="ax" x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}"/>
+      <text x="${L - 4}" y="${Y(yMax) + 4}" text-anchor="end">${fmt(yMax)}</text>
+      <text x="${L - 4}" y="${Y(0)}" text-anchor="end">0</text>
+      <text x="${W - R}" y="${H - 4}" text-anchor="end">${fmt(xMax)}${xUnit}</text>
+      ${series.map((s) => `<path fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" d="${s.points.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)} ${Y(p[1]).toFixed(1)}`).join(' ')}"/>`).join('')}
+      ${ends.map((e) => `<text x="${X(e.s.points.at(-1)[0]) + 5}" y="${e.y + 3}">${e.s.name} ${fmt(e.s.points.at(-1)[1])}</text>`).join('')}
+      <line class="hair ax" y1="${T}" y2="${Y(0)}" visibility="hidden"/>
+    </svg><div class="rd">${readout(series, series[0]?.points.length - 1, xUnit, yUnit)}</div>`;
+  const svg = el.querySelector('svg'), hair = el.querySelector('.hair'), rd = el.querySelector('.rd');
+  svg.onmousemove = (e) => {
+    const r = svg.getBoundingClientRect(), x = ((e.clientX - r.left) / r.width * W - L) / (W - L - R) * xMax;
+    const ps = series[0].points; if (!ps.length) return;
+    const i = ps.reduce((best, p, j) => Math.abs(p[0] - x) < Math.abs(ps[best][0] - x) ? j : best, 0);
+    hair.setAttribute('x1', X(ps[i][0])); hair.setAttribute('x2', X(ps[i][0])); hair.setAttribute('visibility', 'visible');
+    rd.innerHTML = readout(series, i, xUnit, yUnit);
+  };
+  svg.onmouseleave = () => { hair.setAttribute('visibility', 'hidden'); rd.innerHTML = readout(series, series[0].points.length - 1, xUnit, yUnit); };
+}
+const readout = (series, i, xUnit, yUnit) => i < 0 || !series[0]?.points[i] ? '' :
+  `${series[0].points[i][0].toFixed(1)}${xUnit} · ` + series.map((s) => `${s.name} <b>${s.points[i]?.[1]?.toLocaleString('ko-KR') ?? '–'}</b>${yUnit}`).join(' · ');
+
+// 대량 판매 동안 0.2초마다 표본을 모아 그래프를 다시 그린다. 세 계열 모두 "아직 안 끝난 건수"라 단위가 같다
+function sampler(box, seller, n, caption) {
+  const el = document.createElement('div'); el.className = 'viz'; box.appendChild(el);
+  const t0 = performance.now(), ob = [], lag = [], todo = [], peak = { ob: 0, lag: 0 };
+  let on = true;
+  const draw = (opts = {}) => lineChart(el, { caption, xUnit: 's', yUnit: '건', ...opts, series: [
+    { name: 'outbox 대기', color: 'var(--s1)', points: ob },
+    { name: 'Redis lag', color: 'var(--s2)', points: lag },
+    { name: '정산 미도착', color: 'var(--s3)', points: todo },
+  ] });
+  (async () => {
+    while (on) {
+      const [b, st, s] = await Promise.all([get('/ops/backlog'), get(`/ops/settlement/sellers/${seller}/settlement`), get('/ops/stream')]);
+      const t = (performance.now() - t0) / 1000, g = s.groups?.[0];
+      ob.push([t, b.waiting]); lag.push([t, g?.lag ?? 0]); todo.push([t, n - (st.ok ? st.data.sold_count : 0)]);
+      peak.ob = Math.max(peak.ob, b.waiting); peak.lag = Math.max(peak.lag, g?.lag ?? 0);
+      draw(); await sleep(200);
+    }
+  })();
+  return { peak, draw, stop: () => on = false, secs: () => (performance.now() - t0) / 1000,
+           xMax: () => ob.at(-1)?.[0] ?? 0, yMax: () => Math.max(1, ...[ob, lag, todo].flat().map((p) => p[1])) };
+}
+
+const liveConsumers = async () => ((await get('/ops/stream')).groups?.[0]?.consumers || []).filter((c) => c.idle_ms < 30000).length;
+
+// 판매 n건을 서버 안에서 일으키고, 정산이 n건을 다 받을 때까지 잰다
+async function burstAndDrain(box, n, caption) {
+  const seller = 800000 + Math.floor(Math.random() * 100000);
+  const s = sampler(box, seller, n, caption);
+  try {
+    const r = (await call('POST', `/ops/burst?n=${n}&seller_id=${seller}`)).data;
+    await waitFor(async () => (await get('/ops/backlog')).waiting === 0, 180000);
+    const drained = s.secs();
+    await waitFor(async () => { const st = await get(`/ops/settlement/sellers/${seller}/settlement`); return st.ok && st.data.sold_count === n; }, 180000);
+    return { ...r, seller, drained, total: s.secs(), peak: s.peak, chart: s };
+  } finally { await sleep(250); s.stop(); }
+}
+
+const SCENARIOS = [
+  {
+    id: 'flow', auto: true, title: '판매 1건이 정산까지 도착한다',
+    why: 'Outbox → Redis Stream → 원장. 판매와 정산이 따로 돌아도 결국 같아지는가',
+    async run(step) {
+      let item, sale;
+      await step('상품 등록', async () => { item = await register(91); return `상품 #${item.id}`; });
+      await step('판매 → 201 (items·sales·outbox 한 트랜잭션)', async () => {
+        const r = await call('POST', `/items/${item.id}/sell`); expect(r.status, 201);
+        sale = await saleOf(item.id); return `sale #${sale.sale_id}, outbox #${sale.id}, 정산액 ${won(sale.amount)}원`;
+      });
+      await step('relay 가 Redis 로 발행', () => waitFor(async () => {
+        const o = (await get('/ops/outbox')).find((x) => x.id === sale.id); return o?.published_at && `published_at ${time(o.published_at)}`;
+      }));
+      await step('settlement 가 받아 원장에 기록', () => waitFor(() => inLedger(sale.sale_id)));
+      await step('판매자 합계 일치 (consign = settlement)', () => totalsMatch(91));
+    },
+  },
+  {
+    id: 'race', auto: true, title: '같은 상품 동시 구매 20건 → 1건만 팔린다',
+    why: '실수 카탈로그 #1. SELECT 후 UPDATE 였다면 201 이 여러 건 또는 500',
+    async run(step) {
+      let item, rs;
+      await step('상품 등록', async () => { item = await register(92); return `상품 #${item.id}`; });
+      await step('판매 20건 동시 전송 → 201 정확히 1건', async () => {
+        rs = await Promise.all(Array.from({ length: 20 }, () => call('POST', `/items/${item.id}/sell`)));
+        const c = count(rs, 'status');
+        if (c[201] !== 1 || c[500]) fail(`201 × ${c[201] || 0}, 409 × ${c[409] || 0}, 500 × ${c[500] || 0}`);
+        return `201 × 1 · 409 × ${c[409]}`;
+      });
+      await step('두 Pod 가 나눠 처리 (Pod 사이 경쟁도 막혔나)', async () => {
+        const pods = count(rs, 'pod');
+        const tags = Object.entries(pods).map(([p, n]) => `${podTag(p)} × ${n}`).join(' ');
+        // ponytail: 브라우저 연결이 한 Pod 로 몰리면 1개만 보일 수 있다 — 실패가 아니라 다시 돌려 볼 일
+        return Object.keys(pods).length > 1 ? tags : `${tags} ⚠️ 한 Pod 만 응답 — 다시 실행해 볼 것`;
+      });
+      await step('정산도 1건 (판매자 합계 일치)', () => totalsMatch(92));
+    },
+  },
+  {
+    id: 'outage', auto: false, title: '정산 서비스가 꺼져도 판매는 된다',
+    why: '비동기로 나눈 이유. 정산이 멈춘 동안 이벤트는 Redis 에 쌓였다가, 다시 켜면 따라잡는다',
+    async run(step) {
+      let item, sale;
+      await step(`정산 서비스 끄기 ${cmd(`${K} scale deploy/settlement --replicas=0`)}`, () => waitFor(async () =>
+        !(await get('/ops/settlement/ledger')).ok && '정산 서비스 응답 없음', 180000));
+      await step('그 사이 판매 → 201', async () => {
+        item = await register(93);
+        const r = await call('POST', `/items/${item.id}/sell`); expect(r.status, 201);
+        sale = await saleOf(item.id); return `sale #${sale.sale_id} — 판매는 정산 서비스에 기대지 않는다`;
+      });
+      await step('이벤트가 Redis 에 쌓임 (lag ≥ 1)', () => waitFor(async () => {
+        const g = (await get('/ops/stream')).groups?.[0]; return g && g.lag >= 1 && `lag ${g.lag} — 아직 아무도 안 가져감`;
+      }));
+      await step(`정산 서비스 다시 켜기 ${cmd(`${K} scale deploy/settlement --replicas=2`)}`, () =>
+        waitFor(() => inLedger(sale.sale_id), 180000));
+      await step('판매자 합계 일치', () => totalsMatch(93));
+    },
+  },
+  {
+    id: 'burst', auto: true, title: '판매 1000건이 한꺼번에 몰린다',
+    why: '세일·라이브 방송 직후. Outbox 가 쌓였다가 relay(배치 100건)가 비우고, 정산이 따라잡기까지 — 그래프로 본다',
+    async run(step, box) {
+      const N = 1000; let m;
+      await step(`판매 ${N}건 커밋 → 적체가 0 으로 → 정산이 전부 받음`, async () => {
+        m = await burstAndDrain(box, N, `판매 ${N}건 동안 아직 안 끝난 건수 (이 로컬 kind 클러스터에서 잰 값)`);
+        return `등록 한 문장 ${m.insert_ms}ms · 판매 트랜잭션 ${N}개 ${m.sell_ms}ms (${Math.round(N / m.sell_ms * 1000)}건/초, ${podTag(m.pod)})`;
+      });
+      await step('어디서 줄 섰나', async () =>
+        `최고 적체 outbox ${m.peak.ob}건 · Redis lag ${m.peak.lag}건 → Outbox 가 비는 데 ${m.drained.toFixed(1)}s, 정산 마지막 건까지 ${m.total.toFixed(1)}s. ` +
+        (m.peak.ob > m.peak.lag * 3 ? '줄은 <b>Outbox 쪽</b>(relay 가 병목)' : m.peak.lag > m.peak.ob * 3 ? '줄은 <b>Redis 쪽</b>(소비자가 병목)' : '줄이 양쪽에 비슷하게'));
+      await step('판매자 합계 일치', () => totalsMatch(m.seller));
+    },
+  },
+  {
+    id: 'scale', auto: false, title: '정산 소비자를 2→4개로 늘리면 빨라지나',
+    why: '"느리면 Pod 를 늘린다"가 통하는지. 병목이 소비자가 아니면 늘려도 그대로다 — 같은 500건으로 전후 비교',
+    async run(step, box) {
+      const N = 500; let a, b;
+      await step(`지금 소비자로 ${N}건`, async () => {
+        const c = await liveConsumers();
+        a = await burstAndDrain(box, N, `소비자 ${c}개 — 판매 ${N}건`);
+        return `소비자 ${c}개: 정산 마지막 건까지 ${a.total.toFixed(1)}s (최고 적체 outbox ${a.peak.ob} · lag ${a.peak.lag})`;
+      });
+      await step(`소비자 4개로 ${cmd(`${K} scale deploy/settlement --replicas=4`)}`, () =>
+        waitFor(async () => { const c = await liveConsumers(); return c >= 4 && `살아 있는 소비자 ${c}개`; }, 180000));
+      await step(`소비자 4개로 ${N}건`, async () => {
+        b = await burstAndDrain(box, N, `소비자 4개 — 판매 ${N}건`);
+        // 두 그래프를 같은 축으로 다시 그려 나란히 비교되게 한다
+        const xMax = Math.max(a.chart.xMax(), b.chart.xMax()), yMax = Math.max(a.chart.yMax(), b.chart.yMax());
+        a.chart.draw({ xMax, yMax }); b.chart.draw({ xMax, yMax });
+        return `정산 마지막 건까지 ${b.total.toFixed(1)}s (최고 적체 outbox ${b.peak.ob} · lag ${b.peak.lag})`;
+      });
+      await step('비교', async () => {
+        const ratio = a.total / b.total;
+        return `${a.total.toFixed(1)}s → ${b.total.toFixed(1)}s (${ratio.toFixed(2)}배). ` +
+          (ratio < 1.2 ? '거의 그대로 — 줄이 소비자 앞이 아니라는 뜻. 적체가 어느 쪽에 쌓였는지 그래프로 확인' : '빨라졌다 — 소비자가 병목이었다');
+      });
+      await step(`원래대로 ${cmd(`${K} scale deploy/settlement --replicas=2`)}`, () =>
+        waitFor(async () => { const c = await liveConsumers(); return c <= 2 && `살아 있는 소비자 ${c}개`; }, 180000));
+    },
+  },
+  {
+    id: 'pool', auto: true, title: '느린 쿼리가 커넥션 풀을 다 잡으면 판매도 줄 선다',
+    why: '정산 리포트 같은 느린 쿼리가 몰리면 Pod 의 풀(5 + overflow 10)이 바닥나고, 평범한 판매 요청까지 풀 빈자리를 기다린다',
+    async run(step, box) {
+      const H = 300; let small, big;
+      const el = document.createElement('div'); el.className = 'viz'; box.appendChild(el);
+      const draw = () => lineChart(el, {
+        caption: `작업별 완료 시간, 빠른 순 (각 쿼리 ${H}ms, 이 로컬 kind 클러스터에서 잰 값)`, xUnit: '%', yUnit: 'ms', xMax: 100,
+        series: [[small, '동시 10개', 'var(--s1)'], [big, '동시 100개', 'var(--s2)']].filter(([r]) => r).map(([r, name, color]) => ({
+          name, color, points: r.latencies.map((v, i) => [Math.round((i + 1) / r.latencies.length * 100), v]),
+        })),
+      });
+      await step(`풀 안쪽: 느린 쿼리 10개 동시`, async () => {
+        small = (await call('POST', `/ops/pool?n=10&hold_ms=${H}`)).data; draw();
+        const max = small.latencies.at(-1);
+        if (max >= H * 2) fail(`가장 늦은 ${max}ms — 풀 안쪽인데 줄을 섰다`);
+        return `풀 ${small.pool_size}+${small.max_overflow} · 가장 늦은 ${max}ms · 끼어든 SELECT 1 ${small.probe_ms}ms`;
+      });
+      await step(`풀 초과: 느린 쿼리 100개 동시 → 줄 서기 재현`, async () => {
+        big = (await call('POST', `/ops/pool?n=100&hold_ms=${H}`)).data; draw();
+        const max = big.latencies.at(-1), cap = big.pool_size + big.max_overflow;
+        if (max < H * 3) fail(`가장 늦은 ${max}ms — 줄 서기가 안 보인다`);
+        return `가장 늦은 ${max}ms (풀 ${cap}개라 ${Math.ceil(100 / cap)}번에 나눠 처리) · 끼어든 SELECT 1 <b>${big.probe_ms}ms</b> ← 평범한 판매 요청도 이만큼 기다린다`;
+      });
+      box.insertAdjacentHTML('beforeend', '<p class="viz note">고치는 방향: 느린 작업은 동시 개수를 제한(Semaphore)하거나 읽기 전용 복제본·별도 풀로 분리, statement_timeout 으로 상한, 풀 대기는 pool_timeout 을 짧게 해 빨리 실패. 풀을 키우면 Pod 수 × 풀 이 Postgres max_connections 를 넘는다 → PgBouncer</p>');
+    },
+  },
+];
+
+function renderScenarios() {
+  $('scens').innerHTML = SCENARIOS.map((s) => `<div class="scen" id="s-${s.id}">
+    <header><h3>${esc(s.title)}${s.auto ? '' : ' <span class="chip">터미널 필요</span>'}</h3><button data-run="${s.id}">실행</button></header>
+    <p>${esc(s.why)}</p><ol></ol></div>`).join('');
+  document.querySelectorAll('[data-run]').forEach((b) => b.onclick = () => runScenario(SCENARIOS.find((s) => s.id === b.dataset.run)));
+}
+
+async function runScenario(s) {
+  const box = $(`s-${s.id}`), ol = box.querySelector('ol'), btn = box.querySelector('button[data-run]');
+  box.classList.remove('pass', 'fail'); ol.innerHTML = ''; btn.disabled = true;
+  box.querySelectorAll('.viz').forEach((v) => v.remove());
+  const step = async (label, fn) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>⏳</span><span>${label}</span><span class="d"></span>`;
+    ol.appendChild(li);
+    const t0 = performance.now();
+    try {
+      const detail = await fn();
+      li.firstChild.textContent = '✅';
+      li.lastChild.innerHTML = `${typeof detail === 'string' ? detail : ''} · ${Math.round(performance.now() - t0)}ms`;
+    } catch (e) {
+      li.firstChild.textContent = '❌'; li.classList.add('fail'); li.lastChild.textContent = e.message;
+      throw e;
+    }
+  };
+  try { await s.run(step, box); box.classList.add('pass'); return true; }
+  catch { box.classList.add('fail'); return false; }
+  finally { btn.disabled = false; refresh(); }
+}
+
+$('runAll').onclick = async () => {
+  const autos = SCENARIOS.filter((s) => s.auto);
+  $('summary').textContent = '실행 중…'; $('summary').className = 'muted';
+  let ok = 0;
+  for (const s of autos) ok += await runScenario(s);
+  $('summary').textContent = `${ok}/${autos.length} 통과`;
+  $('summary').className = ok === autos.length ? 'ok' : 'bad';
+};
+
+// ── 구성도: 선을 따라 점 하나를 흘리고, 도착 노드를 잠깐 강조한다. n>1 이면 점 옆에 건수
+function pulse(edge, to, n = 1) {
+  const p = $(edge), len = p.getTotalLength();
+  const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  dot.setAttribute('r', 7); dot.style.fill = 'var(--accent)';
+  p.parentNode.appendChild(dot);
+  const label = n > 1 && document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  if (label) { label.textContent = `×${n}`; label.classList.add('count'); p.parentNode.appendChild(label); }
+  const t0 = performance.now(), dur = 600;
+  return new Promise((done) => requestAnimationFrame(function step(t) {
+    const k = Math.min((t - t0) / dur, 1), pt = p.getPointAtLength(k * len);
+    dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y);
+    if (label) { label.setAttribute('x', pt.x + 10); label.setAttribute('y', pt.y - 10); }
+    if (k < 1) return requestAnimationFrame(step);
+    dot.remove(); label && label.remove(); $(to).classList.add('hot'); setTimeout(() => $(to).classList.remove('hot'), 700); done();
+  }));
+}
+
+// 새 trace 를 경로별로 세어 한 번씩 흘린다. 첫 조회는 기준선만 잡는다
+async function pullTrace() {
+  const fresh = await get(`/ops/trace?after=${traceAfter || ''}`).catch(() => []);
+  if (!fresh.length) return;
+  const first = traceAfter === null;
+  traceAfter = fresh[fresh.length - 1].id;
+  trace.unshift(...fresh.reverse()); trace.length = Math.min(trace.length, 500);
+  renderLog();
+  if (first) return;
+  if (fresh.some((t) => t.kind !== 'probe')) mark('log');
+  const n = (f) => fresh.filter(f).length;
+  const toConsign = n((t) => t.svc === 'consign' && t.kind === 'http');
+  const writes = n((t) => t.svc === 'consign' && t.kind === 'http' && !t.what.startsWith('GET') && t.status < 300);
+  const toSettle = n((t) => t.svc === 'settlement' && t.kind === 'http');
+  const relayed = fresh.filter((t) => t.kind === 'relay').reduce((a, t) => a + +t.n, 0);
+  const consumed = fresh.filter((t) => t.kind === 'consume').reduce((a, t) => a + +t.n, 0);
+  if (toConsign) pulse('e1', 'nConsign', toConsign).then(() => writes && pulse('e2', 'nConsignDb', writes));
+  if (toSettle) pulse('e6', 'nSettle', toSettle);
+  if (relayed) pulse('e3', 'nRedis', relayed);
+  if (consumed) pulse('e4', 'nSettle', consumed).then(() => pulse('e5', 'nSettleDb', consumed));
+}
+const fmtGap = (a, b) => (a && b) ? `+${((new Date(b) - new Date(a)) / 1000).toFixed(2)}s` : '';
+
+function renderArch(items, outbox, stream, ledger) {
+  const now = Date.now();
+  $('aConsign').innerHTML = [...consignPods].filter(([n, t]) => n && now - t < 10000).map(([n]) => podTag(n)).join(' ') +
+    '<br>Service NodePort :8001';
+  $('aConsignDb').innerHTML = `items 최근 ${items.length}개 중 판매됨 ${items.filter((i) => i.status === 'SOLD').length}<br>outbox 대기 <b>${outbox.filter((o) => !o.published_at).length}</b>`;
+  const g = stream.enabled && stream.groups[0];
+  $('aRedis').innerHTML = stream.enabled
+    ? `길이 ${stream.length} · pending <b>${g ? g.pending : 0}</b> · lag <b class="${g && g.lag ? 'warn' : ''}">${g && g.lag != null ? g.lag : '–'}</b>`
+    : '<span class="bad">REDIS_URL 없음 — relay 꺼짐</span>';
+  const live = g ? g.consumers.filter((c) => c.idle_ms < 30000) : [];
+  $('aSettle').innerHTML = (live.map((c) => podTag(c.name)).join(' ') || '<span class="bad">살아 있는 소비자 없음</span>') +
+    '<br>그룹 <code>settlement</code>';
+  $('nSettle').classList.toggle('down', !live.length);
+  $('nSettleDb').classList.toggle('down', !ledger.ok);
+  $('aSettleDb').innerHTML = ledger.ok ? `ledger 최근 ${ledger.data.length}건<br>응답 ${podTag(ledger.served_by)}` : `<span class="bad">응답 없음 (${esc(ledger.error)})</span>`;
+
+
+  // 판매 한 건을 sale_id 로 이어 붙인다 — 두 서비스의 DB 를 consign 이 HTTP 로 모은 결과
+  const got = Object.fromEntries((ledger.ok ? ledger.data : []).map((l) => [l.sale_id, l]));
+  $('journey').innerHTML = outbox.slice(0, 10).map((o) => {
+    const l = got[o.sale_id];
+    return `<tr class="${fresh(seen.ledger, 'j' + o.sale_id + !!l)}"><td>${o.sale_id}</td><td>${o.seller_id}</td><td class="num">${won(o.amount)}</td>
+      <td>${time(o.created_at)}</td>
+      <td>${o.published_at ? `${time(o.published_at)} <span class="muted">${fmtGap(o.created_at, o.published_at)}</span>` : '<span class="warn">outbox 대기</span>'}</td>
+      <td>${l ? `${time(l.received_at)} <span class="muted">${fmtGap(o.published_at, l.received_at)}</span>` : (o.published_at ? '<span class="warn">스트림에서 대기</span>' : '')}</td>
+      <td class="num">${l ? fmtGap(o.created_at, l.received_at) : ''}</td></tr>`;
+  }).join('') || '<tr><td colspan="7" class="muted">판매가 없다. 위 시나리오를 실행하거나 「상품 · 직접 조작」 탭에서 판매.</td></tr>';
+}
+
+const fresh = (set, key) => { const n = !set.has(key); set.add(key); return n ? 'new' : ''; };
+
+async function refresh() {
+  const [items, outbox, stream, ledger, mine, theirs] = await Promise.all([
+    get('/ops/items'), get('/ops/outbox'), get('/ops/stream'),
+    get(LEDGER), get('/ops/sellers'), get('/ops/settlement/sellers'),
+  ]).catch(() => []);
+  if (!items) return;
+  renderArch(items, outbox, stream, ledger);
+  pullTrace();
+
+  $('items').innerHTML = items.map((i) => `<tr>
+    <td>${i.id}</td><td>${i.seller_id}</td><td>${esc(i.name)}</td><td class="num">${won(i.price)}</td><td class="num">${i.commission_rate}%</td>
+    <td>${i.status === 'SOLD' ? '<span class="chip muted">판매됨</span>' : '<span class="chip ok">판매중</span>'}</td>
+    <td><button onclick="sell(${i.id})" ${i.status === 'SOLD' ? 'disabled' : ''}>판매</button>
+        <button onclick="race(${i.id})" ${i.status === 'SOLD' ? 'disabled' : ''}>동시 20건</button></td></tr>`).join('')
+    || '<tr><td colspan="7" class="muted">상품이 없다. 왼쪽에서 등록하거나 샘플 5개.</td></tr>';
+
+  $('obWait').textContent = outbox.filter((o) => !o.published_at).length;
+  $('obDone').textContent = outbox.filter((o) => o.published_at).length;
+  $('outbox').innerHTML = outbox.map((o) => `<tr class="${fresh(seen.outbox, o.id + ':' + !!o.published_at)}">
+    <td>${o.id}</td><td>${o.sale_id}</td><td class="num">${won(o.amount)}</td>
+    <td>${o.published_at ? `<span class="ok">발행 ${time(o.published_at)}</span>` : '<span class="warn">대기</span>'}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">비어 있음</td></tr>';
+
+  if (!stream.enabled) {
+    $('consumers').innerHTML = '<tr><td colspan="3" class="muted">REDIS_URL 이 없어 relay 가 꺼져 있다</td></tr>';
+  } else {
+    const g = stream.groups[0];
+    $('stLen').textContent = stream.length;
+    $('stPend').textContent = g ? g.pending : '–';
+    $('stLag').textContent = g && g.lag != null ? g.lag : '–';
+    // 30초 넘게 조용한 소비자는 사라진 Pod 일 가능성이 크다(그룹에 이름만 남음)
+    $('consumers').innerHTML = (g ? g.consumers : []).map((c) => `<tr style="${c.idle_ms > 30000 ? 'opacity:.4' : ''}">
+      <td>${podTag(c.name)} <code class="muted">${esc(c.name)}</code>${c.idle_ms > 30000 ? ' <span class="chip">사라진 Pod?</span>' : ''}</td>
+      <td class="num ${c.pending ? 'warn' : ''}">${c.pending}</td><td class="num muted">${(c.idle_ms / 1000).toFixed(1)}s</td></tr>`).join('')
+      || '<tr><td colspan="3" class="muted">소비자 없음 — settlement 가 떠 있나?</td></tr>';
+  }
+
+  if (ledger.ok) {
+    $('ledgerPod').innerHTML = podTag(ledger.served_by);
+    $('lgCount').textContent = Math.min(ledger.data.length, 15);
+    $('ledger').innerHTML = ledger.data.slice(0, 15).map((l) => `<tr class="${fresh(seen.ledger, l.sale_id)}">
+      <td>${l.sale_id}</td><td>${l.seller_id}</td><td class="num">${won(l.amount)}</td><td>${time(l.received_at)}</td></tr>`).join('')
+      || '<tr><td colspan="4" class="muted">비어 있음</td></tr>';
+  } else {
+    $('ledger').innerHTML = `<tr><td colspan="4" class="bad">정산 서비스 응답 없음 (${esc(ledger.error)})</td></tr>`;
+  }
+
+  const other = Object.fromEntries((theirs.ok ? theirs.data : []).map((s) => [s.seller_id, s]));
+  $('sellers').innerHTML = mine.map((s) => {
+    const t = other[s.seller_id];
+    const same = t && t.total_settlement === s.total_settlement;
+    return `<tr><td>${s.seller_id}</td><td class="num">${won(s.total_settlement)} <span class="muted">(${s.sold_count})</span></td>
+      <td class="num">${t ? won(t.total_settlement) : '–'} <span class="muted">(${t ? t.sold_count : 0})</span></td>
+      <td>${same ? '<span class="ok">일치</span>' : '<span class="warn">따라잡는 중</span>'}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" class="muted">판매 없음</td></tr>';
+}
+
+// 구성도 아래 단계 설명. 주소는 consign 이 실제로 쓰는 설정값이다(k8s 에선 Secret → 환경변수)
+fetch('/ops/topology').then((r) => r.json()).then((t) => {
+  $('steps').innerHTML = [
+    ['①', `브라우저 → consign Service. 요청마다 consign Pod 중 하나가 받는다`],
+    ['②', `<code>POST /items/{id}/sell</code>: items 조건부 UPDATE + sales + outbox 를 <b>한 트랜잭션</b>으로 <code>${esc(t.database)}</code> 에 커밋`],
+    ['③', t.redis ? `relay(consign Pod 안 백그라운드 태스크)가 outbox 를 읽어 <code>${esc(t.redis)}</code> 스트림 <code>sales</code> 에 XADD, published_at 기록` : 'REDIS_URL 이 없어 relay 가 꺼져 있다 — outbox 에 쌓이기만 한다'],
+    ['④', `settlement Pod 들이 소비자 그룹 <code>settlement</code> 로 XREADGROUP — 메시지를 나눠 받는다`],
+    ['⑤', `원장에 INSERT … ON CONFLICT DO NOTHING 커밋 <b>뒤</b> XACK (중복 도착해도 1건)`],
+    ['⑥', `이 콘솔이 정산 데이터를 그릴 때 consign 이 <code>${esc(t.settlement)}</code> 로 HTTP GET. 정산 DB 를 직접 읽지 않는다`],
+  ].map(([n, s]) => `<li><i>${n}</i>${s}</li>`).join('');
+});
+
+renderScenarios();
+fetch('/healthz').then((r) => $('pagePod').innerHTML = podTag(r.headers.get('x-served-by')));
+refresh();
+setInterval(() => $('live').checked && refresh(), 1000);
+</script>
+</body>
+</html>

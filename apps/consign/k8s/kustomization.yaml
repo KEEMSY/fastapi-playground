@@ -1,0 +1,1 @@
+resources: [infra.yaml, apps.yaml]

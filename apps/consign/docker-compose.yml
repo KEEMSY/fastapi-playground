@@ -1,0 +1,20 @@
+# 로컬 개발·테스트용. k8s 연습은 k8s/ 와 Makefile
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: consign
+      POSTGRES_PASSWORD: consign
+      POSTGRES_DB: consign
+    ports: ["55432:5432"]
+    volumes: ["./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"]
+  redis:
+    image: redis:7
+    ports: ["56379:6379"]
+  rabbitmq:  # BROKER=rabbitmq 일 때. 관리 UI http://localhost:55673 (guest/guest)
+    image: rabbitmq:4-management
+    ports: ["55672:5672", "55673:15672"]  # 5672·15672 는 다른 프로젝트 브로커와 겹치기 쉬워 55xxx 로
+    healthcheck:  # make test 의 --wait 가 브로커 준비를 기다리게
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 3s
+      retries: 20

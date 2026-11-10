@@ -1,0 +1,83 @@
+# 접속 정보는 Secret → 환경변수. 코드는 pydantic-settings 로 DATABASE_URL·REDIS_URL 을 읽는다
+apiVersion: v1
+kind: Secret
+metadata: { name: consign-env }
+stringData:
+  DATABASE_URL: postgresql+asyncpg://consign:consign@postgres:5432/consign
+  REDIS_URL: redis://redis:6379
+  SETTLEMENT_URL: http://settlement:8000  # Service 이름이 클러스터 안 DNS 다
+  BROKER: redis  # rabbitmq 로 바꾸면 판매 이벤트가 RabbitMQ 로 간다. settlement-env 도 같이 바꾼다
+  RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+---
+apiVersion: v1
+kind: Secret
+metadata: { name: settlement-env }
+stringData:
+  DATABASE_URL: postgresql+asyncpg://consign:consign@postgres:5432/settlement
+  REDIS_URL: redis://redis:6379
+  BROKER: redis  # consign-env 와 같은 값이어야 한다
+  RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+  PREFETCH: "10"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: consign }
+spec:
+  replicas: 2  # 2개부터 "메모리·로컬 파일 상태가 공유되지 않는다"가 실제 문제가 된다
+  selector: { matchLabels: { app: consign } }
+  template:
+    metadata: { labels: { app: consign } }
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: app
+          image: consign:dev
+          imagePullPolicy: Never  # kind load 로 넣은 로컬 이미지를 쓴다
+          envFrom: [{ secretRef: { name: consign-env } }]
+          ports: [{ containerPort: 8000 }]
+          livenessProbe: { httpGet: { path: /healthz, port: 8000 }, periodSeconds: 10 }
+          readinessProbe: { httpGet: { path: /readyz, port: 8000 }, periodSeconds: 3 }
+          # SIGTERM 전에 잠깐 기다린다. Service 에서 이 Pod 가 빠지는 것보다 종료가 빠르면 그 사이 요청이 실패한다
+          lifecycle: { preStop: { sleep: { seconds: 5 } } }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: consign }
+spec:
+  type: NodePort
+  selector: { app: consign }
+  ports: [{ port: 8000, nodePort: 30001 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: settlement }
+spec:
+  replicas: 2  # 같은 소비자 그룹이라 두 Pod 가 메시지를 나눠 받는다
+  selector: { matchLabels: { app: settlement } }
+  template:
+    metadata: { labels: { app: settlement } }
+    spec:
+      containers:
+        - name: app
+          image: consign:dev
+          imagePullPolicy: Never
+          args: ["uvicorn", "settlement.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          envFrom: [{ secretRef: { name: settlement-env } }]
+          ports: [{ containerPort: 8000 }]
+          livenessProbe: { httpGet: { path: /healthz, port: 8000 }, periodSeconds: 10 }
+          readinessProbe: { httpGet: { path: /readyz, port: 8000 }, periodSeconds: 3 }
+          lifecycle: { preStop: { sleep: { seconds: 5 } } }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: settlement }
+spec:
+  type: NodePort
+  selector: { app: settlement }
+  ports: [{ port: 8000, nodePort: 30002 }]

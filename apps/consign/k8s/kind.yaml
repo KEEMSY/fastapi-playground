@@ -1,0 +1,9 @@
+# 노드 1개 클러스터. NodePort 를 호스트 포트로 열어 port-forward 없이 붙는다
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: consign
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - { containerPort: 30001, hostPort: 8001 }  # consign
+      - { containerPort: 30002, hostPort: 8002 }  # settlement
